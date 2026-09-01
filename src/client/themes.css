@@ -1,0 +1,136 @@
+/* ==============================================================================
+   DashPark Theme Presets (7 Curated Palettes)
+   ============================================================================== */
+
+/* 1. Dark (Obsidian / Indigo) - Default */
+body.theme-dark {
+  --bg-base: #0a0d14;
+  --bg-surface: #111726;
+  --bg-surface-elevated: #182035;
+  --bg-glass: rgba(17, 23, 38, 0.75);
+  --bg-glass-hover: rgba(24, 32, 53, 0.85);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(99, 102, 241, 0.6);
+  --border-glow: 0 0 15px rgba(99, 102, 241, 0.25);
+  --accent-primary: #6366f1;
+  --accent-primary-hover: #4f46e5;
+  --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+}
+
+/* 2. Nord (Arctic Polar & Frost) */
+body.theme-nord {
+  --bg-base: #242933;
+  --bg-surface: #2e3440;
+  --bg-surface-elevated: #3b4252;
+  --bg-glass: rgba(46, 52, 64, 0.8);
+  --bg-glass-hover: rgba(59, 66, 82, 0.9);
+  --border-subtle: rgba(236, 239, 244, 0.1);
+  --border-focus: rgba(136, 192, 208, 0.6);
+  --border-glow: 0 0 15px rgba(136, 192, 208, 0.3);
+  --accent-primary: #88c0d0;
+  --accent-primary-hover: #81a1c1;
+  --accent-gradient: linear-gradient(135deg, #88c0d0 0%, #5e81ac 100%);
+  --text-primary: #eceff4;
+  --text-secondary: #d8dee9;
+  --text-muted: #9baec8;
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+/* 3. Dracula (Vampire Slate & Purple) */
+body.theme-dracula {
+  --bg-base: #1e1f29;
+  --bg-surface: #282a36;
+  --bg-surface-elevated: #343746;
+  --bg-glass: rgba(40, 42, 54, 0.8);
+  --bg-glass-hover: rgba(52, 55, 70, 0.9);
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-focus: rgba(189, 147, 249, 0.6);
+  --border-glow: 0 0 15px rgba(189, 147, 249, 0.35);
+  --accent-primary: #bd93f9;
+  --accent-primary-hover: #ff79c6;
+  --accent-gradient: linear-gradient(135deg, #bd93f9 0%, #ff79c6 100%);
+  --text-primary: #f8f8f2;
+  --text-secondary: #bfbfbf;
+  --text-muted: #6272a4;
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.6);
+}
+
+/* 4. Catppuccin (Mocha & Mauve) */
+body.theme-catppuccin {
+  --bg-base: #11111b;
+  --bg-surface: #1e1e2e;
+  --bg-surface-elevated: #313244;
+  --bg-glass: rgba(30, 30, 46, 0.82);
+  --bg-glass-hover: rgba(49, 50, 68, 0.9);
+  --border-subtle: rgba(205, 214, 244, 0.1);
+  --border-focus: rgba(203, 166, 247, 0.6);
+  --border-glow: 0 0 15px rgba(203, 166, 247, 0.3);
+  --accent-primary: #cba6f7;
+  --accent-primary-hover: #b4befe;
+  --accent-gradient: linear-gradient(135deg, #cba6f7 0%, #f5c2e7 100%);
+  --text-primary: #cdd6f4;
+  --text-secondary: #a6adc8;
+  --text-muted: #6c7086;
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.55);
+}
+
+/* 5. Cyberpunk (Neon Cyan & Electric Pink) */
+body.theme-cyberpunk {
+  --bg-base: #05050f;
+  --bg-surface: #0e0e1f;
+  --bg-surface-elevated: #1a1a38;
+  --bg-glass: rgba(14, 14, 31, 0.85);
+  --bg-glass-hover: rgba(26, 26, 56, 0.95);
+  --border-subtle: rgba(0, 240, 255, 0.15);
+  --border-focus: rgba(0, 240, 255, 0.8);
+  --border-glow: 0 0 18px rgba(0, 240, 255, 0.45);
+  --accent-primary: #00f0ff;
+  --accent-primary-hover: #ffe600;
+  --accent-gradient: linear-gradient(135deg, #00f0ff 0%, #ff0055 100%);
+  --text-primary: #ffffff;
+  --text-secondary: #00f0ff;
+  --text-muted: #7979a8;
+  --shadow-card: 0 4px 25px -2px rgba(0, 240, 255, 0.15);
+}
+
+/* 6. Glass (Frosted Translucent) */
+body.theme-glass {
+  --bg-base: #090d16;
+  --bg-surface: rgba(255, 255, 255, 0.04);
+  --bg-surface-elevated: rgba(255, 255, 255, 0.08);
+  --bg-glass: rgba(255, 255, 255, 0.06);
+  --bg-glass-hover: rgba(255, 255, 255, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.14);
+  --border-focus: rgba(255, 255, 255, 0.4);
+  --border-glow: 0 0 20px rgba(255, 255, 255, 0.15);
+  --accent-primary: #38bdf8;
+  --accent-primary-hover: #818cf8;
+  --accent-gradient: linear-gradient(135deg, rgba(56, 189, 248, 0.8) 0%, rgba(129, 140, 248, 0.8) 100%);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --shadow-card: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* 7. Light (Clean Alabaster & Slate) */
+body.theme-light {
+  --bg-base: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f8fafc;
+  --bg-glass: rgba(255, 255, 255, 0.88);
+  --bg-glass-hover: rgba(248, 250, 252, 0.98);
+  --border-subtle: #e2e8f0;
+  --border-focus: rgba(99, 102, 241, 0.5);
+  --border-glow: 0 0 15px rgba(99, 102, 241, 0.2);
+  --accent-primary: #4f46e5;
+  --accent-primary-hover: #4338ca;
+  --accent-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --shadow-card: 0 4px 16px -1px rgba(0, 0, 0, 0.08);
+}

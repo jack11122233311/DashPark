@@ -8,10 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.1] - 2026-09-02
 
 ### Added
-- **Core Architecture Scaffolding**: Ultra-lightweight Node.js (native ESM) + Fastify backend paired with Vite + TypeScript client.
-- **Resilient Configuration Engine**: Declarative YAML and JSON parser with exact line/column error extraction and interactive visual repair diagnostics.
-- **Zero-Runtime CSS Design System**: Glassmorphism dark-mode layout, responsive category grid, service cards with hover micro-animations.
-- **Sample Config**: Built-in `dashpark.sample.yaml` showcasing 11+ common homelab services (Plex, Jellyfin, Sonarr, Proxmox, Portainer, Pi-hole, Vaultwarden, etc.).
-- **Live Search**: Keyboard-first search filter with `/` shortcut to focus and `Escape` to reset.
-- **Unit Test Suite**: Automated Vitest test suite validating YAML syntax parsing, error diagnostic mapping, and schema validation.
-- **Architecture Decision Record**: Created `ADR.md` outlining design principles and competitive benchmarking.
+- **3 Dynamic Layout Modes**:
+  - **Categorized Grid**: Traditional category columns with collapsible accordions.
+  - **Bento Grid**: Modern modular card grid featuring prominent hero cards and category badges.
+  - **Compact List**: High-density table view with sortable columns for large homelabs (50+ services).
+  - Quick switch hotkeys (`Ctrl+1`, `Ctrl+2`, `Ctrl+3`) and persistent user preference.
+- **7 Theme Presets**:
+  - `dark` (Obsidian & Indigo), `nord` (Arctic Frost), `dracula` (Vampire Slate), `catppuccin` (Mocha & Mauve), `cyberpunk` (Neon Cyan/Pink), `glass` (Translucent Frosted), and `light` (Alabaster).
+- **Smart 6-Tier Icon Resolver Engine**:
+  - Automatic cascade: Local custom icons -> `walkxcode/dashboard-icons` (PNG/SVG) -> `Simple Icons` -> Backend Favicon Proxy -> Lucide Category Vectors -> High-contrast Initials Badges.
+  - Zero layout shift with fixed aspect-ratio containers.
+  - LocalStorage and in-memory cache to remember working icons and eliminate redundant failed requests.
+- **Backend Favicon & Local Icons Proxy**: Fastify route `/api/v1/icons/favicon` with caching and static `/icons/` mounting.
+- **Tag Filtering Bar**: Interactive tag pills for one-click service filtering by tag.
+- **Test Suite Expansion**: Added unit tests for `IconResolver`, cascade hierarchies, and keyword fallbacks (11 / 11 tests passing).
+- **Core Architecture & Scaffolding**: Fastify backend, Vite client, resilient YAML configuration engine, and `<15MB RAM` runtime benchmark.

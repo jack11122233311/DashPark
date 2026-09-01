@@ -5,6 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { ConfigLoader } from './config/loader.js';
 import { parseConfig } from './config/parser.js';
+import { iconRoutes } from './routes/icons.js';
 import type { ServerHealthResponse } from '../shared/types.js';
 
 const startTime = Date.now();
@@ -22,6 +23,9 @@ export async function setupServer() {
   await fastify.register(cors, {
     origin: true,
   });
+
+  // Register Icon Proxy and static /icons route
+  await fastify.register(iconRoutes);
 
   // --- API Routes ---
 
@@ -66,12 +70,13 @@ export async function setupServer() {
       root: clientDist,
       prefix: '/',
       wildcard: false,
+      decorateReply: false,
     });
 
     fastify.setNotFoundHandler(async (req, reply) => {
       const url = req.url || '';
-      if (url.startsWith('/api')) {
-        return reply.status(404).send({ error: 'API route not found', statusCode: 404 });
+      if (url.startsWith('/api') || url.startsWith('/icons')) {
+        return reply.status(404).send({ error: 'Route not found', statusCode: 404 });
       }
       const indexPath = path.join(clientDist, 'index.html');
       if (fs.existsSync(indexPath)) {
@@ -98,6 +103,7 @@ async function startServer() {
   🌐 Local URL:       http://localhost:${PORT}
   📡 API Health:      http://localhost:${PORT}/api/v1/health
   ⚙️  Config Engine:   http://localhost:${PORT}/api/v1/config
+  🖼️  Icon Proxy:      http://localhost:${PORT}/api/v1/icons/favicon
   ⚡ Startup Time:    ${elapsed}ms
   🧠 Memory Footprint: ${memMb} MB RAM
   ======================================================
