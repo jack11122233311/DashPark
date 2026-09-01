@@ -1,0 +1,37 @@
+# Git & GitHub
+.git/
+.github/
+.gitignore
+
+# Dependencies & Build artifacts (rebuilt in container)
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Tests & Scratch files
+tests/
+*.test.ts
+*.spec.ts
+coverage/
+
+# Documentation & Editor
+docs/
+*.md
+.vscode/
+.idea/
+.editorconfig
+
+# Local environment & log files
+.env*
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Config local override (sample is copied explicitly)
+config/dashpark.yaml
+config/dashpark.yml
+config/dashpark.json
+config/*.bak
+icons/*
+!icons/.gitkeep

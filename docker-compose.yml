@@ -1,0 +1,28 @@
+# ==============================================================================
+# DashPark Docker Compose Setup
+# Documentation: https://github.com/jack11122233311/DashPark
+# ==============================================================================
+
+services:
+  dashpark:
+    image: ghcr.io/jack11122233311/dashpark:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dashpark
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/app/config
+      - ./icons:/app/icons
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - TZ=UTC
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/v1/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
