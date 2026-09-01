@@ -1,11 +1,12 @@
 import type { DashParkConfig, Category, ServiceItem } from '../../shared/types.js';
 import { stringify as stringifyYaml } from 'yaml';
+import { HOMELAB_PRESETS } from './presets.js';
 
 export class ConfigEditor {
   private dialog: HTMLDialogElement | null = null;
   private currentConfig: DashParkConfig | null = null;
   private rawYaml: string = '';
-  private activeTab: 'visual' | 'yaml' = 'visual';
+  private activeTab: 'visual' | 'yaml' | 'guides' = 'visual';
   private validationDebounceTimer: NodeJS.Timeout | null = null;
   private onSavedCallback: () => void;
 
@@ -34,7 +35,7 @@ export class ConfigEditor {
     const tabBtns = document.querySelectorAll<HTMLButtonElement>('.editor-tab-btn');
     tabBtns.forEach((btn) => {
       btn.addEventListener('click', () => {
-        const tab = btn.getAttribute('data-tab') as 'visual' | 'yaml';
+        const tab = btn.getAttribute('data-tab') as 'visual' | 'yaml' | 'guides';
         if (tab) this.switchTab(tab);
       });
     });
@@ -68,6 +69,7 @@ export class ConfigEditor {
 
       this.renderVisualForm();
       this.renderYamlEditor();
+      this.renderGuidesView();
       this.dialog.showModal();
     } catch (err) {
       console.error('[DashPark Editor] Failed to open config:', err);
@@ -81,7 +83,7 @@ export class ConfigEditor {
     }
   }
 
-  private switchTab(tab: 'visual' | 'yaml'): void {
+  private switchTab(tab: 'visual' | 'yaml' | 'guides'): void {
     this.activeTab = tab;
 
     document.querySelectorAll('.editor-tab-btn').forEach((btn) => {
@@ -90,19 +92,22 @@ export class ConfigEditor {
 
     const visualPane = document.getElementById('editor-visual-pane');
     const yamlPane = document.getElementById('editor-yaml-pane');
+    const guidesPane = document.getElementById('editor-guides-pane');
+
+    visualPane?.classList.toggle('active', tab === 'visual');
+    yamlPane?.classList.toggle('active', tab === 'yaml');
+    guidesPane?.classList.toggle('active', tab === 'guides');
 
     if (tab === 'visual') {
-      if (visualPane) visualPane.classList.add('active');
-      if (yamlPane) yamlPane.classList.remove('active');
       this.renderVisualForm();
-    } else {
-      if (visualPane) visualPane.classList.remove('active');
-      if (yamlPane) yamlPane.classList.add('active');
+    } else if (tab === 'yaml') {
       // Sync YAML textarea from current visual state if modified
       if (this.currentConfig) {
         this.rawYaml = stringifyYaml(this.currentConfig);
       }
       this.renderYamlEditor();
+    } else if (tab === 'guides') {
+      this.renderGuidesView();
     }
   }
 
@@ -184,10 +189,16 @@ export class ConfigEditor {
   }
 
   private renderServiceItem(svc: ServiceItem, catIdx: number, svcIdx: number): string {
+    const isWidgetEnabled = svc.widget?.enabled !== false;
+    const isGraphEnabled = svc.widget?.showGraph !== false;
+    const shortcuts = svc.shortcuts || [];
+
     return `
-      <div class="visual-service-item" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: stretch;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+      <div class="visual-service-item" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" style="display: flex; flex-direction: column; gap: 0.65rem; align-items: stretch; background: var(--bg-surface-elevated); padding: 0.875rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+        
+        <!-- Top Row: Name, URL, Icon & Actions -->
+        <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 280px;">
             <input 
               type="text" 
               class="form-input svc-name-input" 
@@ -195,7 +206,7 @@ export class ConfigEditor {
               data-cat-index="${catIdx}" 
               data-svc-index="${svcIdx}"
               placeholder="Service Name" 
-              style="width: 160px; font-weight: 600;"
+              style="width: 150px; font-weight: 600;"
             />
             <input 
               type="text" 
@@ -213,11 +224,15 @@ export class ConfigEditor {
               data-cat-index="${catIdx}" 
               data-svc-index="${svcIdx}"
               placeholder="Icon (e.g. emby)" 
-              style="width: 120px; font-family: var(--font-mono); font-size: 0.8125rem;"
+              style="width: 110px; font-family: var(--font-mono); font-size: 0.8125rem;"
             />
           </div>
 
-          <div class="service-item-actions">
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <select class="form-input svc-preset-select" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: var(--bg-surface); color: var(--accent-primary); border-color: rgba(99, 102, 241, 0.4);">
+              <option value="">⚡ 1-Click Preset...</option>
+              ${HOMELAB_PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
+            </select>
             <button 
               type="button" 
               class="ping-test-btn" 
@@ -239,53 +254,179 @@ export class ConfigEditor {
           </div>
         </div>
 
-        <!-- Optional Widget Configuration Accordion -->
-        <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-surface); padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.75rem;">
-          <span style="font-weight: 700; color: var(--text-muted); text-transform: uppercase;">📊 Live Widget API:</span>
-          <input 
-            type="text" 
-            class="form-input svc-widget-url" 
-            value="${this.escapeHtml(svc.widget?.url || '')}" 
-            data-cat-index="${catIdx}" 
-            data-svc-index="${svcIdx}"
-            placeholder="API URL (e.g. http://pihole.local/admin/api.php?summaryRaw)" 
-            style="flex: 1; font-size: 0.75rem; padding: 0.25rem 0.5rem; font-family: var(--font-mono);"
-          />
-          <input 
-            type="text" 
-            class="form-input svc-widget-key" 
-            value="${this.escapeHtml(svc.widget?.jsonPath || '')}" 
-            data-cat-index="${catIdx}" 
-            data-svc-index="${svcIdx}"
-            placeholder="JSON Path (e.g. ads_blocked_today)" 
-            style="width: 150px; font-size: 0.75rem; padding: 0.25rem 0.5rem; font-family: var(--font-mono);"
-          />
-          <input 
-            type="text" 
-            class="form-input svc-widget-label" 
-            value="${this.escapeHtml(svc.widget?.label || '')}" 
-            data-cat-index="${catIdx}" 
-            data-svc-index="${svcIdx}"
-            placeholder="Label (e.g. Blocked)" 
-            style="width: 80px; font-size: 0.75rem; padding: 0.25rem 0.5rem;"
-          />
-          <button 
-            type="button" 
-            class="btn-secondary btn-test-widget" 
-            data-cat-index="${catIdx}" 
-            data-svc-index="${svcIdx}"
-            style="font-size: 0.6875rem; padding: 0.2rem 0.5rem;"
-            title="Test JSON API response"
-          >
-            🧪 Test API
-          </button>
+        <!-- Middle Row: Modular Live Widget API & Toggles -->
+        <div style="display: flex; flex-direction: column; gap: 0.4rem; background: var(--bg-surface); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.75rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-weight: 700; color: var(--text-muted); text-transform: uppercase;">📊 Live Widget:</span>
+              <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer; color: var(--text-secondary);">
+                <input type="checkbox" class="svc-widget-enabled" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" ${isWidgetEnabled ? 'checked' : ''} />
+                Enabled
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer; color: var(--text-secondary);">
+                <input type="checkbox" class="svc-widget-showgraph" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" ${isGraphEnabled ? 'checked' : ''} />
+                Show Graph in Tile
+              </label>
+            </div>
+            <button 
+              type="button" 
+              class="btn-secondary btn-test-widget" 
+              data-cat-index="${catIdx}" 
+              data-svc-index="${svcIdx}"
+              style="font-size: 0.6875rem; padding: 0.2rem 0.5rem;"
+              title="Test JSON API response"
+            >
+              🧪 Test Widget API
+            </button>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input 
+              type="text" 
+              class="form-input svc-widget-url" 
+              value="${this.escapeHtml(svc.widget?.url || '')}" 
+              data-cat-index="${catIdx}" 
+              data-svc-index="${svcIdx}"
+              placeholder="API URL (e.g. http://pihole.local/admin/api.php?summaryRaw)" 
+              style="flex: 1; font-size: 0.75rem; padding: 0.25rem 0.5rem; font-family: var(--font-mono);"
+            />
+            <input 
+              type="text" 
+              class="form-input svc-widget-key" 
+              value="${this.escapeHtml(svc.widget?.jsonPath || '')}" 
+              data-cat-index="${catIdx}" 
+              data-svc-index="${svcIdx}"
+              placeholder="JSON Path (e.g. ads_blocked_today)" 
+              style="width: 140px; font-size: 0.75rem; padding: 0.25rem 0.5rem; font-family: var(--font-mono);"
+            />
+            <input 
+              type="text" 
+              class="form-input svc-widget-label" 
+              value="${this.escapeHtml(svc.widget?.label || '')}" 
+              data-cat-index="${catIdx}" 
+              data-svc-index="${svcIdx}"
+              placeholder="Label (e.g. Blocked)" 
+              style="width: 80px; font-size: 0.75rem; padding: 0.25rem 0.5rem;"
+            />
+          </div>
         </div>
+
+        <!-- Bottom Row: Action Shortcuts -->
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; background: var(--bg-surface); padding: 0.4rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.75rem;">
+          <span style="font-weight: 700; color: var(--text-muted); text-transform: uppercase;">🔗 Shortcuts:</span>
+          ${
+            shortcuts.length === 0
+              ? `<span style="color: var(--text-muted); font-size: 0.75rem;">None</span>`
+              : shortcuts
+                  .map(
+                    (sc, scIdx) => `
+                      <div style="display: inline-flex; align-items: center; gap: 0.2rem; background: var(--bg-surface-elevated); padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid var(--border-subtle);">
+                        <input 
+                          type="text" 
+                          class="sc-name-input" 
+                          value="${this.escapeHtml(sc.name)}" 
+                          data-cat-index="${catIdx}" 
+                          data-svc-index="${svcIdx}" 
+                          data-sc-index="${scIdx}" 
+                          placeholder="Name" 
+                          style="width: 60px; font-size: 0.6875rem; background: transparent; border: none; color: var(--text-primary);"
+                        />
+                        <input 
+                          type="text" 
+                          class="sc-url-input" 
+                          value="${this.escapeHtml(sc.url)}" 
+                          data-cat-index="${catIdx}" 
+                          data-svc-index="${svcIdx}" 
+                          data-sc-index="${scIdx}" 
+                          placeholder="URL" 
+                          style="width: 130px; font-size: 0.6875rem; background: transparent; border: none; color: var(--text-secondary); font-family: var(--font-mono);"
+                        />
+                        <button type="button" class="btn-delete-sc" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" data-sc-index="${scIdx}" style="background: none; border: none; color: var(--status-offline); cursor: pointer; font-size: 0.6875rem;">✕</button>
+                      </div>
+                    `
+                  )
+                  .join('')
+          }
+          <button type="button" class="btn-secondary btn-add-sc" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" style="font-size: 0.6875rem; padding: 0.15rem 0.45rem;">+ Add Shortcut</button>
+        </div>
+
+      </div>
+    `;
+  }
+
+  private renderGuidesView(): void {
+    const container = document.getElementById('guides-content-list');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div style="margin-bottom: 1rem;">
+        <h3 style="font-size: 1.125rem; font-weight: 700; color: var(--text-primary);">📖 Homelab Service Connection Guides</h3>
+        <p style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.25rem;">
+          Quick cheatsheet for connecting popular self-hosted services, locating API keys, and setting up real-time telemetry widgets.
+        </p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        ${HOMELAB_PRESETS.map(
+          (preset) => `
+            <div class="guide-preset-card">
+              <div class="guide-header-row">
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                  <span style="font-size: 1.25rem;">⚡</span>
+                  <h4 class="guide-title">${this.escapeHtml(preset.guide.title)}</h4>
+                </div>
+                <span class="guide-auth-badge">${preset.guide.authType === 'none' ? 'Zero Auth' : preset.guide.authType}</span>
+              </div>
+              <p style="font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.4;">
+                ${this.escapeHtml(preset.guide.tokenInstructions)}
+              </p>
+              <div class="guide-code-box">
+                <div><strong>Default Endpoint:</strong> <code>${this.escapeHtml(preset.widget?.url || preset.urlPlaceholder)}</code></div>
+                <div style="margin-top: 0.25rem;"><strong>JSONPath Extractor:</strong> <code>${this.escapeHtml(preset.guide.sampleJsonPath)}</code></div>
+              </div>
+              <p style="font-size: 0.75rem; color: var(--text-muted);">
+                💡 <strong>Tip:</strong> ${this.escapeHtml(preset.guide.endpointTips)}
+              </p>
+            </div>
+          `
+        ).join('')}
       </div>
     `;
   }
 
   private attachVisualEventListeners(): void {
-    // Category Name input
+    // Preset dropdown apply
+    document.querySelectorAll<HTMLSelectElement>('.svc-preset-select').forEach((select) => {
+      select.addEventListener('change', () => {
+        const presetId = select.value;
+        if (!presetId) return;
+
+        const preset = HOMELAB_PRESETS.find((p) => p.id === presetId);
+        if (!preset) return;
+
+        const catIdx = parseInt(select.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(select.getAttribute('data-svc-index') || '0', 10);
+        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+
+        if (svc) {
+          svc.name = preset.name;
+          svc.url = preset.urlPlaceholder;
+          svc.icon = preset.icon;
+          svc.description = preset.description;
+          svc.pingUrl = preset.defaultPingUrl;
+          svc.tags = [...preset.tags];
+          if (preset.widget) {
+            svc.widget = JSON.parse(JSON.stringify(preset.widget));
+          }
+          if (preset.shortcuts) {
+            svc.shortcuts = JSON.parse(JSON.stringify(preset.shortcuts));
+          }
+          this.renderVisualForm();
+        }
+      });
+    });
+
+    // Category Name & Icon inputs
     document.querySelectorAll<HTMLInputElement>('.cat-name-input').forEach((input) => {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
@@ -295,7 +436,6 @@ export class ConfigEditor {
       });
     });
 
-    // Category Icon input
     document.querySelectorAll<HTMLInputElement>('.cat-icon-input').forEach((input) => {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
@@ -320,7 +460,7 @@ export class ConfigEditor {
     document.querySelectorAll<HTMLButtonElement>('.btn-add-service').forEach((btn) => {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
-        const name = prompt('Service Name (e.g. Nextcloud, Portainer):');
+        const name = prompt('Service Name (e.g. Emby, Pi-hole, Proxmox):');
         if (name && name.trim()) {
           const url = prompt('Service URL (e.g. http://192.168.1.100:8080):', 'http://');
           if (url && url.trim()) {
@@ -332,6 +472,8 @@ export class ConfigEditor {
               icon: cleanId,
               target: '_blank',
               tags: [],
+              widget: { enabled: true, type: 'stat', showGraph: true },
+              shortcuts: [],
             });
             this.renderVisualForm();
           }
@@ -382,7 +524,31 @@ export class ConfigEditor {
       });
     });
 
-    // Widget inputs
+    // Widget checkboxes & inputs
+    document.querySelectorAll<HTMLInputElement>('.svc-widget-enabled').forEach((chk) => {
+      chk.addEventListener('change', () => {
+        const catIdx = parseInt(chk.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(chk.getAttribute('data-svc-index') || '0', 10);
+        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        if (svc) {
+          if (!svc.widget) svc.widget = { type: 'stat' };
+          svc.widget.enabled = chk.checked;
+        }
+      });
+    });
+
+    document.querySelectorAll<HTMLInputElement>('.svc-widget-showgraph').forEach((chk) => {
+      chk.addEventListener('change', () => {
+        const catIdx = parseInt(chk.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(chk.getAttribute('data-svc-index') || '0', 10);
+        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        if (svc) {
+          if (!svc.widget) svc.widget = { type: 'stat' };
+          svc.widget.showGraph = chk.checked;
+        }
+      });
+    });
+
     document.querySelectorAll<HTMLInputElement>('.svc-widget-url').forEach((input) => {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
@@ -415,6 +581,53 @@ export class ConfigEditor {
         if (svc) {
           if (!svc.widget) svc.widget = { type: 'stat' };
           svc.widget.label = input.value;
+        }
+      });
+    });
+
+    // Shortcuts: add, edit & delete
+    document.querySelectorAll<HTMLButtonElement>('.btn-add-sc').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(btn.getAttribute('data-svc-index') || '0', 10);
+        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        if (svc) {
+          if (!svc.shortcuts) svc.shortcuts = [];
+          svc.shortcuts.push({ name: 'Link', url: svc.url });
+          this.renderVisualForm();
+        }
+      });
+    });
+
+    document.querySelectorAll<HTMLInputElement>('.sc-name-input').forEach((input) => {
+      input.addEventListener('change', () => {
+        const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
+        const scIdx = parseInt(input.getAttribute('data-sc-index') || '0', 10);
+        const sc = this.currentConfig?.categories[catIdx]?.services[svcIdx]?.shortcuts?.[scIdx];
+        if (sc) sc.name = input.value;
+      });
+    });
+
+    document.querySelectorAll<HTMLInputElement>('.sc-url-input').forEach((input) => {
+      input.addEventListener('change', () => {
+        const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
+        const scIdx = parseInt(input.getAttribute('data-sc-index') || '0', 10);
+        const sc = this.currentConfig?.categories[catIdx]?.services[svcIdx]?.shortcuts?.[scIdx];
+        if (sc) sc.url = input.value;
+      });
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.btn-delete-sc').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(btn.getAttribute('data-svc-index') || '0', 10);
+        const scIdx = parseInt(btn.getAttribute('data-sc-index') || '0', 10);
+        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        if (svc?.shortcuts) {
+          svc.shortcuts.splice(scIdx, 1);
+          this.renderVisualForm();
         }
       });
     });
@@ -453,6 +666,37 @@ export class ConfigEditor {
         } catch {
           btn.textContent = '✕ Error';
           btn.style.color = 'var(--status-offline)';
+        }
+      });
+    });
+
+    // Test ping buttons
+    document.querySelectorAll<HTMLButtonElement>('.ping-test-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-url');
+        if (!url) return;
+
+        btn.className = 'ping-test-btn testing';
+        btn.textContent = '⏳ Testing...';
+
+        try {
+          const res = await fetch('/api/v1/health/ping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+          });
+
+          const data = await res.json();
+          if (data.status === 'online') {
+            btn.className = 'ping-test-btn online';
+            btn.textContent = `✓ ${data.latencyMs}ms (${data.statusCode || 200})`;
+          } else {
+            btn.className = 'ping-test-btn offline';
+            btn.textContent = `✕ Offline (${data.error || 'Timeout'})`;
+          }
+        } catch {
+          btn.className = 'ping-test-btn offline';
+          btn.textContent = '✕ Unreachable';
         }
       });
     });

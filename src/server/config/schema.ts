@@ -30,13 +30,22 @@ export const DashboardMetaSchema = z.object({
   searchEngine: { enabled: true, provider: 'duckduckgo', customUrl: '' },
 });
 
+export const ServiceShortcutSchema = z.object({
+  name: z.string().min(1, 'Shortcut name is required'),
+  url: z.string().min(1, 'Shortcut URL is required'),
+  icon: z.string().optional().default(''),
+  target: ServiceTargetSchema.optional().default('_blank'),
+});
+
 export const ServiceWidgetSchema = z.object({
+  enabled: z.boolean().optional().default(true),
   type: z.enum(['stat', 'sparkline', 'chart', 'badge']).default('stat'),
   url: z.string().optional().default(''),
   headers: z.record(z.string()).optional(),
   jsonPath: z.string().optional().default(''),
   label: z.string().optional().default(''),
   unit: z.string().optional().default(''),
+  showGraph: z.boolean().optional().default(true),
   refreshIntervalSeconds: z.number().int().min(5).max(3600).optional().default(30),
 }).optional();
 
@@ -50,6 +59,7 @@ export const ServiceItemSchema = z.object({
   target: ServiceTargetSchema,
   tags: z.array(z.string()).optional().default([]),
   widget: ServiceWidgetSchema,
+  shortcuts: z.array(ServiceShortcutSchema).optional().default([]),
 });
 
 export const CategorySchema = z.object({

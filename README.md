@@ -4,7 +4,7 @@
 
 **The ultra-lightweight, resilient, and modern self-hosted dashboard for homelabs and servers.**
 
-[![Version](https://img.shields.io/badge/version-v0.1.0-indigo.svg)](https://github.com/jack11122233311/DashPark/releases)
+[![Version](https://img.shields.io/badge/version-v0.2.0-indigo.svg)](https://github.com/jack11122233311/DashPark/releases)
 [![Docker](https://img.shields.io/badge/docker-multi--arch-blue.svg)](https://github.com/jack11122233311/DashPark/pkgs/container/dashpark)
 [![Architectures](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-orange.svg)](#multi-arch-support)
 [![Memory](https://img.shields.io/badge/memory-%3C18MB_RAM-emerald.svg)](#benchmarks)
@@ -20,7 +20,10 @@
 
 - ⚡ **Ultra-Lightweight**: Runs on **<18MB RAM** with sub-60ms cold start times. Optimized for Raspberry Pi 3/4/5 and low-spec SBCs.
 - 🐳 **Multi-Arch Docker Ready**: Pre-packaged for `linux/amd64` and `linux/arm64` (aarch64) with non-root security (`USER node`).
-- 📊 **Live Homelab Widgets & uPlot Telemetry**: Embedded time-series latency sparklines and generic JSON metric extractors (e.g. Pi-hole ads blocked, Emby active streams).
+- 📊 **View-Adaptive & Toggle-able Stats**: Dynamic live telemetry adapts to the current view — large live uPlot charts in Bento/Tile view, compact sparklines in Grid view, and dense status pills in List view.
+- ⚡ **1-Click Presets Library**: Built-in instant recipes for Emby, Jellyfin, Plex, Pi-hole, AdGuard, Sonarr, Radarr, Home Assistant, Proxmox, TrueNAS, and Uptime Kuma.
+- 📖 **Interactive Service Connection Guides**: Step-by-step token and JSONPath extraction cheatsheet directly inside the Config Editor (`Ctrl+E`).
+- 🔗 **Isolated Action Shortcuts**: Quick micro-action links (e.g. `[Dashboard]`, `[Live TV]`, `[Query Log]`, `[Console]`) on cards without triggering parent navigation.
 - 🛡️ **Zero-Crash Resilient Config Engine**: Misplaced YAML indentations or syntax mistakes won't crash your server or show a blank screen. DashPark catches syntax errors and displays real-time line/column visual repair diagnostics in the UI.
 - 🎨 **3 Switchable Layout Modes**:
   - **Categorized Grid (`Ctrl+1`)**: Traditional clean category columns with collapsible accordions.

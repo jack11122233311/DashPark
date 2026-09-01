@@ -433,6 +433,109 @@ body {
   display: block;
 }
 
+/* ==============================================================================
+   Service Action Shortcuts
+   ============================================================================== */
+
+.service-shortcuts-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.service-shortcut-chip {
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  padding: 0.15rem 0.45rem;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  z-index: 2;
+}
+
+.service-shortcut-chip:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+}
+
+.bento-telemetry-slot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 36px;
+  min-width: 120px;
+}
+
+.grid-sparkline-slot {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+}
+
+/* Guide tab styles in editor */
+.guide-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem 0;
+}
+
+.guide-preset-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.guide-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.guide-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.guide-auth-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--accent-primary);
+  text-transform: uppercase;
+}
+
+.guide-code-box {
+  background: #090d16;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #a5b4fc;
+}
+
 
 /* ==============================================================================
    Tag Filter Bar

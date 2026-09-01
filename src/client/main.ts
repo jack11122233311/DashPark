@@ -15,12 +15,13 @@ import { SystemWidget } from './widgets/SystemWidget.js';
 import { ConfigEditor } from './editor/ConfigEditor.js';
 import { ChartWidget } from './widgets/ChartWidget.js';
 
-// Extend window for global icon fallback callbacks
+// Extend window for global icon fallback callbacks and shortcuts
 declare global {
   interface Window {
     __dashParkIconLoaded?: (img: HTMLImageElement) => void;
     __dashParkIconError?: (img: HTMLImageElement) => void;
     __dashParkToggleCategory?: (id: string) => void;
+    __dashParkOpenShortcut?: (e: MouseEvent, url: string, target?: string) => void;
   }
 }
 
@@ -65,6 +66,12 @@ class DashParkClient {
     this.initEditor();
     this.initKeyboardShortcuts();
     this.initSystemWidget();
+
+    window.__dashParkOpenShortcut = (e: MouseEvent, url: string, target?: string) => {
+      e.stopPropagation();
+      e.preventDefault();
+      window.open(url, target || '_blank');
+    };
 
     this.loadData();
 
@@ -345,12 +352,15 @@ class DashParkClient {
       dot.className = `service-status-dot ${result.status}`;
     });
 
-    // Render sparklines if container present
+    // Render sparklines dynamically based on container type
     const sparkContainers = document.querySelectorAll<HTMLElement>(`[data-sparkline="${serviceId}"]`);
     const history = this.latencyHistoryMap.get(serviceId);
     if (history && history.length >= 2) {
       sparkContainers.forEach((container) => {
-        ChartWidget.renderSparkline(container, [], history, '#10b981', 80, 24);
+        const isBento = container.classList.contains('bento-telemetry-slot');
+        const w = isBento ? 120 : 80;
+        const h = isBento ? 34 : 22;
+        ChartWidget.renderSparkline(container, [], history, '#10b981', w, h);
       });
     }
   }
@@ -362,7 +372,7 @@ class DashParkClient {
 
     categories.forEach((cat) => {
       cat.services.forEach((svc) => {
-        if (svc.widget && svc.widget.url) {
+        if (svc.widget && svc.widget.enabled !== false && svc.widget.url) {
           const poll = async () => {
             try {
               const query = new URLSearchParams({
@@ -570,6 +580,7 @@ class DashParkClient {
             const status = health?.status || 'pending';
             const latencyStr = health ? `${health.latencyMs}ms` : 'Ping';
             const widgetData = this.widgetDataMap.get(service.id);
+            const showGraph = service.widget?.enabled !== false && service.widget?.showGraph !== false;
 
             const iconHtml = globalIconResolver.renderIcon({
               serviceName: service.name,
@@ -578,6 +589,17 @@ class DashParkClient {
               categoryIcon,
               size: isHero ? 50 : 44,
             });
+
+            const shortcutsHtml = (service.shortcuts || []).length > 0
+              ? `<div class="service-shortcuts-row">
+                  ${service.shortcuts!
+                    .map(
+                      (sc) =>
+                        `<span class="service-shortcut-chip" onclick="window.__dashParkOpenShortcut(event, '${this.escapeHtml(sc.url)}', '${sc.target || '_blank'}')">${this.escapeHtml(sc.name)}</span>`
+                    )
+                    .join('')}
+                </div>`
+              : '';
 
             return `
               <a 
@@ -592,7 +614,7 @@ class DashParkClient {
                 <div class="bento-top-row">
                   ${iconHtml}
                   <div class="bento-meta">
-                    <div class="service-sparkline-box" data-sparkline="${service.id}"></div>
+                    ${showGraph ? `<div class="service-sparkline-box bento-telemetry-slot" data-sparkline="${service.id}"></div>` : ''}
                     <span class="service-latency-badge ${status}" data-health-badge="${service.id}">${latencyStr}</span>
                     <span class="bento-category-badge">${this.escapeHtml(categoryName)}</span>
                     <span class="service-status-dot ${status}" data-status-dot="${service.id}"></span>
@@ -610,6 +632,7 @@ class DashParkClient {
                     </span>
                   </div>
                   ${service.description ? `<p class="bento-desc">${this.escapeHtml(service.description)}</p>` : ''}
+                  ${shortcutsHtml}
                 </div>
               </a>
             `;
@@ -633,10 +656,10 @@ class DashParkClient {
         <table class="compact-table">
           <thead>
             <tr>
-              <th style="width: 35%;">Service</th>
-              <th style="width: 20%;">Category</th>
+              <th style="width: 30%;">Service</th>
+              <th style="width: 15%;">Category</th>
               <th style="width: 25%;">Destination URL</th>
-              <th style="width: 20%; text-align: right;">Latency & Widgets</th>
+              <th style="width: 30%; text-align: right;">Latency, Shortcuts & Badges</th>
             </tr>
           </thead>
           <tbody>
@@ -654,6 +677,13 @@ class DashParkClient {
                   categoryIcon,
                   size: 28,
                 });
+
+                const shortcutsInline = (service.shortcuts || [])
+                  .map(
+                    (sc) =>
+                      `<span class="service-shortcut-chip" style="padding: 0.1rem 0.35rem; font-size: 0.625rem;" onclick="window.__dashParkOpenShortcut(event, '${this.escapeHtml(sc.url)}', '${sc.target || '_blank'}')">${this.escapeHtml(sc.name)}</span>`
+                  )
+                  .join('');
 
                 return `
                   <tr 
@@ -678,7 +708,8 @@ class DashParkClient {
                       </a>
                     </td>
                     <td style="text-align: right;">
-                      <div style="display: inline-flex; align-items: center; gap: 0.4rem; justify-content: flex-end;">
+                      <div style="display: inline-flex; align-items: center; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap;">
+                        ${shortcutsInline}
                         <span 
                           class="service-widget-badge" 
                           data-widget-badge="${service.id}" 
@@ -707,6 +738,7 @@ class DashParkClient {
     const status = health?.status || 'pending';
     const latencyStr = health ? `${health.latencyMs}ms` : 'Ping';
     const widgetData = this.widgetDataMap.get(svc.id);
+    const showGraph = svc.widget?.enabled !== false && svc.widget?.showGraph !== false;
 
     const iconHtml = globalIconResolver.renderIcon({
       serviceName: svc.name,
@@ -720,6 +752,17 @@ class DashParkClient {
       .slice(0, 2)
       .map((t) => `<span class="card-tag">#${this.escapeHtml(t)}</span>`)
       .join('');
+
+    const shortcutsHtml = (svc.shortcuts || []).length > 0
+      ? `<div class="service-shortcuts-row">
+          ${svc.shortcuts!
+            .map(
+              (sc) =>
+                `<span class="service-shortcut-chip" onclick="window.__dashParkOpenShortcut(event, '${this.escapeHtml(sc.url)}', '${sc.target || '_blank'}')">${this.escapeHtml(sc.name)}</span>`
+            )
+            .join('')}
+        </div>`
+      : '';
 
     return `
       <a 
@@ -736,7 +779,7 @@ class DashParkClient {
           <div class="service-header-row">
             <h3 class="service-name">${this.escapeHtml(svc.name)}</h3>
             <div style="display: flex; align-items: center; gap: 0.35rem;">
-              <div class="service-sparkline-box" data-sparkline="${svc.id}"></div>
+              ${showGraph ? `<div class="service-sparkline-box grid-sparkline-slot" data-sparkline="${svc.id}"></div>` : ''}
               <span class="service-latency-badge ${status}" data-health-badge="${svc.id}">${latencyStr}</span>
             </div>
           </div>
@@ -751,6 +794,7 @@ class DashParkClient {
               ${widgetData ? `${widgetData.label ? widgetData.label + ': ' : ''}${widgetData.value}${widgetData.unit || ''}` : ''}
             </span>
           </div>
+          ${shortcutsHtml}
         </div>
       </a>
     `;

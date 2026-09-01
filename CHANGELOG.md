@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-02
+
+### Added
+- **View-Adaptive & Toggle-able Service Stats**:
+  - Bento / Tile Mode: 120x34px real-time uPlot sparkline graph slot alongside prominent metric badges.
+  - Categorized Grid Mode: 80x22px compact sparkline and metric counter.
+  - Compact List Mode: High-density inline widget pills preserving 60fps scrolling performance.
+  - Granular toggles (`widget.enabled`, `widget.showGraph`) per service.
+- **1-Click Homelab Presets Catalog (`presets.ts`)**:
+  - Built-in instant recipes for 11 popular homelab services (Emby, Jellyfin, Plex, Pi-hole, AdGuard Home, Sonarr, Radarr, Home Assistant, Proxmox VE, TrueNAS SCALE, Uptime Kuma, and Speedtest Tracker).
+  - Auto-populates URLs, health check pings, JSONPath selectors, header templates, and action shortcuts.
+- **In-App Service Connection & Token Guides**:
+  - Dedicated "📖 Service Guides" tab in the Configuration Editor (`Ctrl+E`) detailing authentication types (Zero Auth, API Key, Bearer, Basic Auth) and token generation instructions.
+- **Action Shortcuts (Anti-Collision Architecture)**:
+  - Added micro-action quick links (e.g. `[Dashboard]`, `[Live TV]`, `[Console]`, `[Query Log]`) directly on cards with click isolation (`event.stopPropagation()`).
+- **Showcase Sample Update**:
+  - Upgraded `config/dashpark.sample.yaml` and embedded fallbacks showcasing shortcuts and widgets for all core services.
+- **Automated Tests**:
+  - Added `tests/shortcuts.test.ts` and `tests/presets.test.ts` bringing total test suite to 29 passing assertions.
+
 ## [0.1.0] - 2026-09-02
 
 ### Added

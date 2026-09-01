@@ -25,13 +25,22 @@ export interface DashboardMeta {
 
 export type WidgetType = 'stat' | 'sparkline' | 'chart' | 'badge';
 
+export interface ServiceShortcut {
+  name: string;
+  url: string;
+  icon?: string;
+  target?: ServiceTarget;
+}
+
 export interface ServiceWidget {
+  enabled?: boolean;
   type: WidgetType;
   url?: string;
   headers?: Record<string, string>;
   jsonPath?: string;
   label?: string;
   unit?: string;
+  showGraph?: boolean;
   refreshIntervalSeconds?: number;
 }
 
@@ -47,6 +56,7 @@ export interface ServiceItem {
   status?: HealthStatus;
   latencyMs?: number;
   widget?: ServiceWidget;
+  shortcuts?: ServiceShortcut[];
 }
 
 export interface Category {
