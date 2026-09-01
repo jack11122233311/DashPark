@@ -885,6 +885,85 @@ body {
 }
 
 /* ==============================================================================
+   Utility & Diagnostic Banner Styles
+   ============================================================================== */
+
+.hidden {
+  display: none !important;
+}
+
+.diagnostic-banner {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  backdrop-filter: blur(12px);
+}
+
+.diagnostic-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.diagnostic-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: #f87171;
+}
+
+.diagnostic-icon {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px;
+  min-height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+  color: #f87171;
+  flex-shrink: 0;
+}
+
+.diagnostic-badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  background: rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-pill);
+  color: #fca5a5;
+}
+
+.diagnostic-message {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.diagnostic-snippet {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  padding: 0.75rem 1rem;
+  background: #090d16;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+  color: #fca5a5;
+  overflow-x: auto;
+}
+
+.diagnostic-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ==============================================================================
    Loading State & Spinner Component
    ============================================================================== */
 
@@ -918,4 +997,6 @@ body {
     transform: rotate(360deg);
   }
 }
+
+
 
