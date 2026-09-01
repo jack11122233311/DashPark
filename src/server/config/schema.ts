@@ -30,6 +30,16 @@ export const DashboardMetaSchema = z.object({
   searchEngine: { enabled: true, provider: 'duckduckgo', customUrl: '' },
 });
 
+export const ServiceWidgetSchema = z.object({
+  type: z.enum(['stat', 'sparkline', 'chart', 'badge']).default('stat'),
+  url: z.string().optional().default(''),
+  headers: z.record(z.string()).optional(),
+  jsonPath: z.string().optional().default(''),
+  label: z.string().optional().default(''),
+  unit: z.string().optional().default(''),
+  refreshIntervalSeconds: z.number().int().min(5).max(3600).optional().default(30),
+}).optional();
+
 export const ServiceItemSchema = z.object({
   id: z.string().min(1, 'Service ID is required'),
   name: z.string().min(1, 'Service name is required'),
@@ -39,6 +49,7 @@ export const ServiceItemSchema = z.object({
   pingUrl: z.string().url('Ping URL must be a valid URL').optional().or(z.literal('')),
   target: ServiceTargetSchema,
   tags: z.array(z.string()).optional().default([]),
+  widget: ServiceWidgetSchema,
 });
 
 export const CategorySchema = z.object({

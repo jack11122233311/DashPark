@@ -13,6 +13,7 @@ import { globalIconResolver } from './icons/IconResolver.js';
 import { getSvgIcon, SVG_ICONS } from './icons/lucide-svgs.js';
 import { SystemWidget } from './widgets/SystemWidget.js';
 import { ConfigEditor } from './editor/ConfigEditor.js';
+import { ChartWidget } from './widgets/ChartWidget.js';
 
 // Extend window for global icon fallback callbacks
 declare global {
@@ -32,6 +33,13 @@ interface ServiceHealthData {
   lastCheckedAt: string;
 }
 
+interface WidgetData {
+  serviceId: string;
+  value: string | number;
+  label?: string;
+  unit?: string;
+}
+
 class DashParkClient {
   public configResponse: ConfigResponse | null = null;
   private searchTerm: string = '';
@@ -40,6 +48,9 @@ class DashParkClient {
   private currentTheme: ThemeName = 'dark';
   private collapsedCategories: Set<string> = new Set();
   private healthDataMap: Map<string, ServiceHealthData> = new Map();
+  private latencyHistoryMap: Map<string, number[]> = new Map();
+  private widgetDataMap: Map<string, WidgetData> = new Map();
+  private widgetPollTimers: Map<string, NodeJS.Timeout> = new Map();
 
   public systemWidget: SystemWidget | null = null;
   public configEditor: ConfigEditor | null = null;
@@ -285,7 +296,7 @@ class DashParkClient {
     } catch {
       const statsPill = document.getElementById('server-stats-text');
       const statusDot = document.querySelector('.status-dot');
-      if (statsPill) statsPill.textContent = 'v0.0.1 • Offline';
+      if (statsPill) statsPill.textContent = 'DashPark • Offline';
       if (statusDot) {
         statusDot.className = 'status-dot error';
       }
@@ -300,6 +311,15 @@ class DashParkClient {
 
       Object.entries(data.services || {}).forEach(([id, result]) => {
         this.healthDataMap.set(id, result);
+
+        // Record latency history for sparklines
+        const history = this.latencyHistoryMap.get(id) || [];
+        if (result.status === 'online' || result.status === 'degraded') {
+          history.push(result.latencyMs);
+          if (history.length > 10) history.shift();
+          this.latencyHistoryMap.set(id, history);
+        }
+
         this.updateServiceBadgeInDom(id, result);
       });
     } catch {
@@ -324,6 +344,67 @@ class DashParkClient {
     dots.forEach((dot) => {
       dot.className = `service-status-dot ${result.status}`;
     });
+
+    // Render sparklines if container present
+    const sparkContainers = document.querySelectorAll<HTMLElement>(`[data-sparkline="${serviceId}"]`);
+    const history = this.latencyHistoryMap.get(serviceId);
+    if (history && history.length >= 2) {
+      sparkContainers.forEach((container) => {
+        ChartWidget.renderSparkline(container, [], history, '#10b981', 80, 24);
+      });
+    }
+  }
+
+  private startWidgetPollers(categories: Category[]): void {
+    // Clear existing timers
+    this.widgetPollTimers.forEach((timer) => clearInterval(timer));
+    this.widgetPollTimers.clear();
+
+    categories.forEach((cat) => {
+      cat.services.forEach((svc) => {
+        if (svc.widget && svc.widget.url) {
+          const poll = async () => {
+            try {
+              const query = new URLSearchParams({
+                url: svc.widget!.url!,
+                jsonPath: svc.widget!.jsonPath || '',
+                headers: JSON.stringify(svc.widget!.headers || {}),
+              });
+
+              const res = await fetch(`/api/v1/widgets/proxy?${query.toString()}`);
+              if (!res.ok) return;
+              const data = await res.json();
+
+              if (data.success && data.value !== undefined) {
+                this.widgetDataMap.set(svc.id, {
+                  serviceId: svc.id,
+                  value: data.value,
+                  label: svc.widget?.label,
+                  unit: svc.widget?.unit,
+                });
+                this.updateWidgetBadgeInDom(svc.id, data.value, svc.widget?.label, svc.widget?.unit);
+              }
+            } catch {
+              // Ignore widget poll errors
+            }
+          };
+
+          // Immediate poll
+          poll();
+          const intervalMs = (svc.widget.refreshIntervalSeconds || 30) * 1000;
+          this.widgetPollTimers.set(svc.id, setInterval(poll, intervalMs));
+        }
+      });
+    });
+  }
+
+  private updateWidgetBadgeInDom(serviceId: string, value: any, label?: string, unit?: string): void {
+    const badges = document.querySelectorAll<HTMLElement>(`[data-widget-badge="${serviceId}"]`);
+    const formatted = `${label ? label + ': ' : ''}${value}${unit || ''}`;
+    badges.forEach((badge) => {
+      badge.textContent = formatted;
+      badge.style.display = 'inline-flex';
+    });
   }
 
   private async loadConfig(): Promise<void> {
@@ -342,6 +423,7 @@ class DashParkClient {
         this.applyMeta(data.config.meta);
         this.renderTagFilterBar(data.config.categories);
         this.renderContent();
+        this.startWidgetPollers(data.config.categories);
       }
     } catch (err) {
       console.error('[DashPark] Failed to load config:', err);
@@ -487,6 +569,7 @@ class DashParkClient {
             const health = this.healthDataMap.get(service.id);
             const status = health?.status || 'pending';
             const latencyStr = health ? `${health.latencyMs}ms` : 'Ping';
+            const widgetData = this.widgetDataMap.get(service.id);
 
             const iconHtml = globalIconResolver.renderIcon({
               serviceName: service.name,
@@ -509,13 +592,23 @@ class DashParkClient {
                 <div class="bento-top-row">
                   ${iconHtml}
                   <div class="bento-meta">
+                    <div class="service-sparkline-box" data-sparkline="${service.id}"></div>
                     <span class="service-latency-badge ${status}" data-health-badge="${service.id}">${latencyStr}</span>
                     <span class="bento-category-badge">${this.escapeHtml(categoryName)}</span>
                     <span class="service-status-dot ${status}" data-status-dot="${service.id}"></span>
                   </div>
                 </div>
                 <div class="bento-bottom-row">
-                  <h3 class="bento-title">${this.escapeHtml(service.name)}</h3>
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                    <h3 class="bento-title">${this.escapeHtml(service.name)}</h3>
+                    <span 
+                      class="service-widget-badge" 
+                      data-widget-badge="${service.id}" 
+                      style="${widgetData ? 'display: inline-flex;' : 'display: none;'}"
+                    >
+                      ${widgetData ? `${widgetData.label ? widgetData.label + ': ' : ''}${widgetData.value}${widgetData.unit || ''}` : ''}
+                    </span>
+                  </div>
                   ${service.description ? `<p class="bento-desc">${this.escapeHtml(service.description)}</p>` : ''}
                 </div>
               </a>
@@ -543,7 +636,7 @@ class DashParkClient {
               <th style="width: 35%;">Service</th>
               <th style="width: 20%;">Category</th>
               <th style="width: 25%;">Destination URL</th>
-              <th style="width: 20%; text-align: right;">Latency & Status</th>
+              <th style="width: 20%; text-align: right;">Latency & Widgets</th>
             </tr>
           </thead>
           <tbody>
@@ -552,6 +645,7 @@ class DashParkClient {
                 const health = this.healthDataMap.get(service.id);
                 const status = health?.status || 'pending';
                 const latencyStr = health ? `${health.latencyMs}ms` : '---';
+                const widgetData = this.widgetDataMap.get(service.id);
 
                 const iconHtml = globalIconResolver.renderIcon({
                   serviceName: service.name,
@@ -584,10 +678,19 @@ class DashParkClient {
                       </a>
                     </td>
                     <td style="text-align: right;">
-                      <span class="service-latency-badge ${status}" data-health-badge="${service.id}">
-                        <span class="service-status-dot ${status}" data-status-dot="${service.id}" style="width: 5px; height: 5px;"></span>
-                        ${latencyStr}
-                      </span>
+                      <div style="display: inline-flex; align-items: center; gap: 0.4rem; justify-content: flex-end;">
+                        <span 
+                          class="service-widget-badge" 
+                          data-widget-badge="${service.id}" 
+                          style="${widgetData ? 'display: inline-flex;' : 'display: none;'}"
+                        >
+                          ${widgetData ? `${widgetData.label ? widgetData.label + ': ' : ''}${widgetData.value}${widgetData.unit || ''}` : ''}
+                        </span>
+                        <span class="service-latency-badge ${status}" data-health-badge="${service.id}">
+                          <span class="service-status-dot ${status}" data-status-dot="${service.id}" style="width: 5px; height: 5px;"></span>
+                          ${latencyStr}
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 `;
@@ -603,6 +706,7 @@ class DashParkClient {
     const health = this.healthDataMap.get(svc.id);
     const status = health?.status || 'pending';
     const latencyStr = health ? `${health.latencyMs}ms` : 'Ping';
+    const widgetData = this.widgetDataMap.get(svc.id);
 
     const iconHtml = globalIconResolver.renderIcon({
       serviceName: svc.name,
@@ -631,10 +735,22 @@ class DashParkClient {
         <div class="service-content">
           <div class="service-header-row">
             <h3 class="service-name">${this.escapeHtml(svc.name)}</h3>
-            <span class="service-latency-badge ${status}" data-health-badge="${svc.id}">${latencyStr}</span>
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <div class="service-sparkline-box" data-sparkline="${svc.id}"></div>
+              <span class="service-latency-badge ${status}" data-health-badge="${svc.id}">${latencyStr}</span>
+            </div>
           </div>
           ${svc.description ? `<p class="service-desc">${this.escapeHtml(svc.description)}</p>` : ''}
-          ${tagsHtml ? `<div class="service-tags-row">${tagsHtml}</div>` : ''}
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.4rem;">
+            ${tagsHtml ? `<div class="service-tags-row" style="margin-top: 0;">${tagsHtml}</div>` : '<div></div>'}
+            <span 
+              class="service-widget-badge" 
+              data-widget-badge="${svc.id}" 
+              style="${widgetData ? 'display: inline-flex;' : 'display: none;'}"
+            >
+              ${widgetData ? `${widgetData.label ? widgetData.label + ': ' : ''}${widgetData.value}${widgetData.unit || ''}` : ''}
+            </span>
+          </div>
         </div>
       </a>
     `;

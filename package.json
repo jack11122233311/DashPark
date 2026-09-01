@@ -1,6 +1,6 @@
 {
   "name": "dashpark",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Ultra-lightweight, modern, self-hosted dashboard for homelabs and servers",
   "type": "module",
   "author": "jack11122233311",
@@ -39,6 +39,7 @@
     "@fastify/cors": "^10.0.2",
     "@fastify/static": "^8.1.1",
     "fastify": "^5.2.1",
+    "uplot": "^1.6.32",
     "yaml": "^2.7.0",
     "zod": "^3.24.2"
   },

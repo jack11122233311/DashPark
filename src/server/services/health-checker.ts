@@ -1,4 +1,10 @@
 import type { HealthStatus, ServiceItem, DashParkConfig } from '../../shared/types.js';
+import { APP_VERSION } from '../../shared/version.js';
+
+// Allow self-signed certificates for local homelab environments (e.g. Proxmox, Portainer, TrueNAS, Emby)
+if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === undefined) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
 
 export interface ServiceHealthResult {
   serviceId: string;
@@ -37,21 +43,27 @@ export class HealthCheckerService {
 
       // Prefer HEAD, fallback to GET if HEAD rejected
       let response: Response;
+      const userAgent = `DashPark-HealthMonitor/${APP_VERSION} (Homelab Health Check)`;
+
       try {
         response = await fetch(targetUrl, {
           method: 'HEAD',
           signal: controller.signal,
+          redirect: 'follow',
           headers: {
-            'User-Agent': 'DashPark-HealthMonitor/0.0.1 (Homelab Health Check)',
+            'User-Agent': userAgent,
+            Accept: '*/*',
           },
         });
       } catch {
-        // Retry with GET for services that don't support HEAD
+        // Retry with GET for services that don't support HEAD or require full handshake
         response = await fetch(targetUrl, {
           method: 'GET',
           signal: controller.signal,
+          redirect: 'follow',
           headers: {
-            'User-Agent': 'DashPark-HealthMonitor/0.0.1 (Homelab Health Check)',
+            'User-Agent': userAgent,
+            Accept: '*/*',
           },
         });
       }

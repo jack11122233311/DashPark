@@ -1,240 +1,258 @@
 export const DEFAULT_SAMPLE_YAML = `# ==============================================================================
-# 🚀 DashPark Sample Configuration File
+# DashPark v0.1.0 Showcase Homelab Configuration
 # Documentation: https://github.com/jack11122233311/DashPark
 # ==============================================================================
 
-version: "0.0.3"
+version: "0.1.0"
 
 meta:
-  title: "DashPark"
-  subtitle: "Personal Homelab & Server Park"
-  logo: ""
-  theme: "dark"
+  title: "Homelab Central"
+  subtitle: "Production Server Park & Media Array"
+  theme: "dark" # dark | light | nord | dracula | cyberpunk | glass
   accentColor: "#6366f1"
-  layout: "grid"
+  layout: "grid" # grid | bento | compact
   showClock: true
-  clockFormat: "24h"
+  clockFormat: "24h" # 12h | 24h
   searchEngine:
     enabled: true
-    provider: "duckduckgo"
-    customUrl: ""
+    provider: "duckduckgo" # duckduckgo | google | brave | custom
 
 categories:
   - id: "media"
     name: "Media & Streaming"
     icon: "film"
     columns: 4
-    collapsed: false
     services:
+      - id: "emby"
+        name: "Emby Media Server"
+        url: "http://host.docker.internal:8096"
+        pingUrl: "http://host.docker.internal:8096/System/Info/Public"
+        icon: "emby"
+        description: "Personal media streaming & Live TV server"
+        target: "_blank"
+        tags: ["media", "streaming", "transcoding"]
+        widget:
+          type: "stat"
+          url: "http://host.docker.internal:8096/System/Info/Public"
+          jsonPath: "ServerName"
+          label: "Server"
+
       - id: "plex"
         name: "Plex Media Server"
-        url: "http://plex.local:32400"
+        url: "http://192.168.1.100:32400/web"
+        pingUrl: "http://192.168.1.100:32400/identity"
         icon: "plex"
-        description: "Movies, TV Series & Music Library"
-        pingUrl: "http://plex.local:32400/web/index.html"
+        description: "4K HDR Movies, TV Shows & Music"
         target: "_blank"
-        tags: ["media", "streaming", "video"]
+        tags: ["media", "streaming", "4k"]
 
       - id: "jellyfin"
         name: "Jellyfin"
-        url: "http://jellyfin.local:8096"
+        url: "http://192.168.1.100:8096"
+        pingUrl: "http://192.168.1.100:8096/health"
         icon: "jellyfin"
-        description: "Open Source Media Streaming Server"
-        pingUrl: "http://jellyfin.local:8096"
+        description: "Open-source privacy-focused media platform"
         target: "_blank"
-        tags: ["media", "opensource", "streaming"]
+        tags: ["media", "opensource"]
 
       - id: "sonarr"
         name: "Sonarr"
-        url: "http://sonarr.local:8989"
+        url: "http://192.168.1.100:8989"
+        pingUrl: "http://192.168.1.100:8989/api/v3/system/status"
         icon: "sonarr"
-        description: "Smart TV Series Collection Manager"
-        pingUrl: "http://sonarr.local:8989/api/v3/system/status"
+        description: "Automated TV series management & DVR"
         target: "_blank"
-        tags: ["media", "automation", "tv"]
+        tags: ["automation", "arr"]
 
       - id: "radarr"
         name: "Radarr"
-        url: "http://radarr.local:7878"
+        url: "http://192.168.1.100:7878"
+        pingUrl: "http://192.168.1.100:7878/api/v3/system/status"
         icon: "radarr"
-        description: "Movie Collection & Download Manager"
-        pingUrl: "http://radarr.local:7878/api/v3/system/status"
+        description: "Movie collection manager & grabber"
         target: "_blank"
-        tags: ["media", "automation", "movies"]
+        tags: ["automation", "arr"]
 
       - id: "overseerr"
         name: "Overseerr"
-        url: "http://overseerr.local:5055"
+        url: "http://192.168.1.100:5055"
+        pingUrl: "http://192.168.1.100:5055/api/v1/status"
         icon: "overseerr"
-        description: "Media Request & Discovery Manager"
-        pingUrl: "http://overseerr.local:5055/api/v1/status"
+        description: "Media request & approval discovery portal"
         target: "_blank"
-        tags: ["media", "requests"]
+        tags: ["requests", "media"]
 
-  - id: "infrastructure"
+  - id: "security"
+    name: "Security & Network Defense"
+    icon: "shield"
+    columns: 4
+    services:
+      - id: "pihole"
+        name: "Pi-hole DNS"
+        url: "http://192.168.1.2:8080/admin"
+        pingUrl: "http://192.168.1.2:8080/admin/api.php?summaryRaw"
+        icon: "pihole"
+        description: "Network-wide ad blocker & local DNS sinkhole"
+        target: "_blank"
+        tags: ["dns", "security", "adblock"]
+        widget:
+          type: "stat"
+          url: "http://192.168.1.2:8080/admin/api.php?summaryRaw"
+          jsonPath: "ads_blocked_today"
+          label: "Blocked"
+
+      - id: "adguard"
+        name: "AdGuard Home"
+        url: "http://192.168.1.3:3000"
+        pingUrl: "http://192.168.1.3:3000/control/status"
+        icon: "adguard-home"
+        description: "Privacy protection & DNS-over-HTTPS resolver"
+        target: "_blank"
+        tags: ["dns", "security", "doh"]
+        widget:
+          type: "stat"
+          url: "http://192.168.1.3:3000/control/stats"
+          jsonPath: "num_blocked_filtering"
+          label: "Blocked"
+
+      - id: "vaultwarden"
+        name: "Vaultwarden"
+        url: "https://vault.homelab.local"
+        pingUrl: "https://vault.homelab.local/alive"
+        icon: "vaultwarden"
+        description: "Self-hosted Bitwarden password vault"
+        target: "_blank"
+        tags: ["passwords", "security", "crypto"]
+
+      - id: "npm"
+        name: "Nginx Proxy Manager"
+        url: "http://192.168.1.1:81"
+        pingUrl: "http://192.168.1.1:81"
+        icon: "nginx-proxy-manager"
+        description: "SSL termination, reverse proxy & access lists"
+        target: "_blank"
+        tags: ["proxy", "ssl", "network"]
+
+      - id: "wireguard"
+        name: "WireGuard / WG-Easy"
+        url: "http://192.168.1.1:51821"
+        pingUrl: "http://192.168.1.1:51821"
+        icon: "wireguard"
+        description: "Encrypted mesh VPN client management"
+        target: "_blank"
+        tags: ["vpn", "tunnel", "security"]
+
+  - id: "infra"
     name: "Infrastructure & Virtualization"
     icon: "server"
     columns: 4
-    collapsed: false
     services:
       - id: "proxmox"
         name: "Proxmox VE"
-        url: "https://proxmox.local:8006"
+        url: "https://192.168.1.254:8006"
+        pingUrl: "https://192.168.1.254:8006"
         icon: "proxmox"
-        description: "Enterprise Hypervisor & VM Management"
-        pingUrl: "https://proxmox.local:8006"
+        description: "Hypervisor cluster, KVM Virtual Machines & LXC"
         target: "_blank"
-        tags: ["virtualization", "cluster", "kvm"]
+        tags: ["hypervisor", "virtualization", "cluster"]
 
       - id: "portainer"
-        name: "Portainer"
-        url: "https://portainer.local:9443"
+        name: "Portainer CE"
+        url: "https://192.168.1.10:9443"
+        pingUrl: "https://192.168.1.10:9443/api/system/status"
         icon: "portainer"
-        description: "Container & Kubernetes Management"
-        pingUrl: "https://portainer.local:9443/api/system/status"
+        description: "Docker stack orchestration & container engine"
         target: "_blank"
-        tags: ["docker", "containers"]
+        tags: ["docker", "containers", "orchestration"]
 
       - id: "truenas"
-        name: "TrueNAS Scale"
-        url: "https://truenas.local"
+        name: "TrueNAS SCALE"
+        url: "https://192.168.1.200"
+        pingUrl: "https://192.168.1.200/api/v2.0/system/info"
         icon: "truenas"
-        description: "ZFS Storage Pool & Network Shares"
-        pingUrl: "https://truenas.local"
+        description: "ZFS RAID storage pool & NFS/SMB file shares"
         target: "_blank"
         tags: ["storage", "zfs", "nas"]
 
       - id: "dockge"
         name: "Dockge"
-        url: "http://dockge.local:5001"
-        icon: "docker"
-        description: "Reactive Docker Compose Manager"
-        pingUrl: "http://dockge.local:5001"
+        url: "http://192.168.1.10:5001"
+        pingUrl: "http://192.168.1.10:5001"
+        icon: "dockge"
+        description: "Visual compose.yaml stack manager"
         target: "_blank"
         tags: ["docker", "compose"]
 
-  - id: "network-security"
-    name: "Network & Security"
-    icon: "shield-check"
-    columns: 4
-    collapsed: false
-    services:
-      - id: "pihole"
-        name: "Pi-hole"
-        url: "http://pihole.local/admin"
-        icon: "pi-hole"
-        description: "Network-wide Ad & Tracker Blocker"
-        pingUrl: "http://pihole.local/admin/index.php"
-        target: "_blank"
-        tags: ["dns", "adblock", "security"]
-
-      - id: "adguard"
-        name: "AdGuard Home"
-        url: "http://adguard.local:3000"
-        icon: "adguard-home"
-        description: "DNS Privacy & Content Filtering"
-        pingUrl: "http://adguard.local:3000/control/status"
-        target: "_blank"
-        tags: ["dns", "adblock", "privacy"]
-
-      - id: "vaultwarden"
-        name: "Vaultwarden"
-        url: "https://vault.local"
-        icon: "vaultwarden"
-        description: "Bitwarden-compatible Password Vault"
-        pingUrl: "https://vault.local/alive"
-        target: "_blank"
-        tags: ["security", "passwords", "vault"]
-
-      - id: "nginx-proxy-manager"
-        name: "Nginx Proxy Manager"
-        url: "http://npm.local:81"
-        icon: "nginx-proxy-manager"
-        description: "Reverse Proxy & SSL Certificate Portal"
-        pingUrl: "http://npm.local:81"
-        target: "_blank"
-        tags: ["proxy", "ssl", "network"]
-
-      - id: "cloudflare"
-        name: "Cloudflare Zero Trust"
-        url: "https://dash.cloudflare.com"
-        icon: "cloudflare"
-        description: "Tunnels, DNS & Edge Security"
-        target: "_blank"
-        tags: ["dns", "cloud", "security"]
-
-  - id: "automation"
+  - id: "smarthome"
     name: "Smart Home & Automation"
-    icon: "home"
-    columns: 3
-    collapsed: false
+    icon: "cpu"
+    columns: 4
     services:
       - id: "homeassistant"
         name: "Home Assistant"
-        url: "http://homeassistant.local:8123"
+        url: "http://192.168.1.5:8123"
+        pingUrl: "http://192.168.1.5:8123/manifest.json"
         icon: "home-assistant"
-        description: "Open-source Home Automation Platform"
-        pingUrl: "http://homeassistant.local:8123"
+        description: "Local smart home hub & IoT automation engine"
         target: "_blank"
-        tags: ["iot", "automation", "smart-home"]
-
-      - id: "zigbee2mqtt"
-        name: "Zigbee2MQTT"
-        url: "http://zigbee.local:8080"
-        icon: "zigbee2mqtt"
-        description: "Zigbee to MQTT Device Bridge"
-        pingUrl: "http://zigbee.local:8080"
-        target: "_blank"
-        tags: ["iot", "zigbee", "mqtt"]
+        tags: ["iot", "smarthome", "zigbee"]
 
       - id: "nodered"
         name: "Node-RED"
-        url: "http://nodered.local:1880"
+        url: "http://192.168.1.5:1880"
+        pingUrl: "http://192.168.1.5:1880"
         icon: "node-red"
-        description: "Low-code Flow-based Automation Engine"
-        pingUrl: "http://nodered.local:1880"
+        description: "Flow-based low-code visual event programming"
         target: "_blank"
-        tags: ["automation", "flow"]
+        tags: ["automation", "flow", "iot"]
 
-  - id: "monitoring-downloads"
+      - id: "zigbee2mqtt"
+        name: "Zigbee2MQTT"
+        url: "http://192.168.1.5:8080"
+        pingUrl: "http://192.168.1.5:8080"
+        icon: "zigbee2mqtt"
+        description: "Zigbee coordinator bridge & device mapper"
+        target: "_blank"
+        tags: ["zigbee", "mqtt", "iot"]
+
+  - id: "monitoring"
     name: "Monitoring & Telemetry"
     icon: "activity"
     columns: 4
-    collapsed: false
     services:
+      - id: "uptimekuma"
+        name: "Uptime Kuma"
+        url: "http://192.168.1.20:3001"
+        pingUrl: "http://192.168.1.20:3001"
+        icon: "uptime-kuma"
+        description: "Self-hosted uptime monitoring & push alerts"
+        target: "_blank"
+        tags: ["monitoring", "uptime", "alerts"]
+
       - id: "grafana"
         name: "Grafana"
-        url: "http://grafana.local:3000"
+        url: "http://192.168.1.21:3000"
+        pingUrl: "http://192.168.1.21:3000/api/health"
         icon: "grafana"
-        description: "Real-time Metrics, Graphs & Dashboards"
-        pingUrl: "http://grafana.local:3000/api/health"
+        description: "Interactive operational metrics dashboards"
         target: "_blank"
-        tags: ["metrics", "monitoring", "telemetry"]
+        tags: ["metrics", "dashboards", "telemetry"]
 
       - id: "prometheus"
         name: "Prometheus"
-        url: "http://prometheus.local:9090"
+        url: "http://192.168.1.21:9090"
+        pingUrl: "http://192.168.1.21:9090/-/healthy"
         icon: "prometheus"
-        description: "Time-series Monitoring Database"
-        pingUrl: "http://prometheus.local:9090/-/healthy"
+        description: "Time-series metrics scraper & TSDB storage"
         target: "_blank"
         tags: ["metrics", "timeseries"]
 
-      - id: "uptime-kuma"
-        name: "Uptime Kuma"
-        url: "http://uptime.local:3001"
-        icon: "uptime-kuma"
-        description: "Self-hosted Uptime Monitoring Service"
-        pingUrl: "http://uptime.local:3001"
+      - id: "speedtest"
+        name: "Speedtest Tracker"
+        url: "http://192.168.1.20:8080"
+        pingUrl: "http://192.168.1.20:8080/api/speedtest/latest"
+        icon: "speedtest-tracker"
+        description: "Automated internet WAN bandwidth & ping auditor"
         target: "_blank"
-        tags: ["monitoring", "uptime"]
-
-      - id: "qbittorrent"
-        name: "qBittorrent"
-        url: "http://qbittorrent.local:8080"
-        icon: "qbittorrent"
-        description: "BitTorrent Download Client with Web UI"
-        pingUrl: "http://qbittorrent.local:8080"
-        target: "_blank"
-        tags: ["downloads", "torrent"]
+        tags: ["wan", "speedtest", "bandwidth"]
 `;

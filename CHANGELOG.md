@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2026-09-02
+
+### Added
+- **Lightweight Telemetry Graphs (`uplot`)**: Embedded time-series latency and performance graphs with zero-lag canvas rendering and automatic theme adaptation.
+- **Universal JSON Metric Widgets**: Declarative stat badges for Pi-hole, Emby, Home Assistant, and Proxmox APIs supporting dot-notation JSONPath extraction (`data.streams.count`).
+- **Backend Widget Proxy (`/api/v1/widgets/proxy`)**: CORS-free, cached (15s TTL) API proxy with secure header/auth support for homelab endpoints.
+- **Enhanced Health Engine**: Self-signed SSL certificate tolerance, automatic HTTP 301/302 redirect following, and HTTP 401/403 reachability mapping.
+- **Docker Host Gateway Mapping**: `host.docker.internal` mapping in `docker-compose.yml` for seamless same-machine container communication.
+- **In-App Widget Editor**: Visual modal in Config Editor (`Ctrl+E`) for testing homelab API endpoints live and mapping JSON keys.
+- **Showcase Homelab Example Dashboard**: Enriched 21-service dashboard featuring Emby, Pi-hole query stats, and live telemetry.
+
 ## [0.0.3] - 2026-09-02
 
 ### Fixed

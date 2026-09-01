@@ -9,6 +9,7 @@ import { iconRoutes } from './routes/icons.js';
 import { healthRoutes } from './routes/health.js';
 import { systemRoutes } from './routes/system.js';
 import { createConfigRoutes } from './routes/config.js';
+import { widgetRoutes } from './routes/widgets.js';
 import { globalHealthChecker } from './services/health-checker.js';
 import { APP_VERSION } from '../shared/version.js';
 import type { ServerHealthResponse } from '../shared/types.js';
@@ -33,6 +34,7 @@ export async function setupServer() {
   await fastify.register(iconRoutes);
   await fastify.register(healthRoutes);
   await fastify.register(systemRoutes);
+  await fastify.register(widgetRoutes);
   await fastify.register(createConfigRoutes(configLoader));
 
   // --- API Routes ---

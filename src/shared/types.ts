@@ -23,6 +23,18 @@ export interface DashboardMeta {
   };
 }
 
+export type WidgetType = 'stat' | 'sparkline' | 'chart' | 'badge';
+
+export interface ServiceWidget {
+  type: WidgetType;
+  url?: string;
+  headers?: Record<string, string>;
+  jsonPath?: string;
+  label?: string;
+  unit?: string;
+  refreshIntervalSeconds?: number;
+}
+
 export interface ServiceItem {
   id: string;
   name: string;
@@ -34,6 +46,7 @@ export interface ServiceItem {
   tags?: string[];
   status?: HealthStatus;
   latencyMs?: number;
+  widget?: ServiceWidget;
 }
 
 export interface Category {

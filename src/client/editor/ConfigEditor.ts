@@ -185,55 +185,99 @@ export class ConfigEditor {
 
   private renderServiceItem(svc: ServiceItem, catIdx: number, svcIdx: number): string {
     return `
-      <div class="visual-service-item" data-cat-index="${catIdx}" data-svc-index="${svcIdx}">
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <input 
-            type="text" 
-            class="form-input svc-name-input" 
-            value="${this.escapeHtml(svc.name)}" 
-            data-cat-index="${catIdx}" 
-            data-svc-index="${svcIdx}"
-            placeholder="Service Name" 
-            style="width: 160px; font-weight: 600;"
-          />
-          <input 
-            type="text" 
-            class="form-input svc-url-input" 
-            value="${this.escapeHtml(svc.url)}" 
-            data-cat-index="${catIdx}" 
-            data-svc-index="${svcIdx}"
-            placeholder="http://192.168.1.50:8080" 
-            style="width: 220px; font-family: var(--font-mono); font-size: 0.8125rem;"
-          />
-          <input 
-            type="text" 
-            class="form-input svc-icon-input" 
-            value="${this.escapeHtml(svc.icon || '')}" 
-            data-cat-index="${catIdx}" 
-            data-svc-index="${svcIdx}"
-            placeholder="Icon (e.g. plex)" 
-            style="width: 120px; font-family: var(--font-mono); font-size: 0.8125rem;"
-          />
+      <div class="visual-service-item" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: stretch;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+            <input 
+              type="text" 
+              class="form-input svc-name-input" 
+              value="${this.escapeHtml(svc.name)}" 
+              data-cat-index="${catIdx}" 
+              data-svc-index="${svcIdx}"
+              placeholder="Service Name" 
+              style="width: 160px; font-weight: 600;"
+            />
+            <input 
+              type="text" 
+              class="form-input svc-url-input" 
+              value="${this.escapeHtml(svc.url)}" 
+              data-cat-index="${catIdx}" 
+              data-svc-index="${svcIdx}"
+              placeholder="http://192.168.1.50:8080" 
+              style="flex: 1; font-family: var(--font-mono); font-size: 0.8125rem;"
+            />
+            <input 
+              type="text" 
+              class="form-input svc-icon-input" 
+              value="${this.escapeHtml(svc.icon || '')}" 
+              data-cat-index="${catIdx}" 
+              data-svc-index="${svcIdx}"
+              placeholder="Icon (e.g. emby)" 
+              style="width: 120px; font-family: var(--font-mono); font-size: 0.8125rem;"
+            />
+          </div>
+
+          <div class="service-item-actions">
+            <button 
+              type="button" 
+              class="ping-test-btn" 
+              data-url="${this.escapeHtml(svc.pingUrl || svc.url)}"
+              title="Test connection to endpoint"
+            >
+              ⚡ Test Ping
+            </button>
+            <button 
+              type="button" 
+              class="btn-secondary btn-delete-svc" 
+              data-cat-index="${catIdx}" 
+              data-svc-index="${svcIdx}"
+              style="padding: 0.25rem 0.6rem; color: var(--status-offline);" 
+              title="Remove Service"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
-        <div class="service-item-actions">
-          <button 
-            type="button" 
-            class="ping-test-btn" 
-            data-url="${this.escapeHtml(svc.pingUrl || svc.url)}"
-            title="Test connection to endpoint"
-          >
-            ⚡ Test Ping
-          </button>
-          <button 
-            type="button" 
-            class="btn-secondary btn-delete-svc" 
+        <!-- Optional Widget Configuration Accordion -->
+        <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-surface); padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.75rem;">
+          <span style="font-weight: 700; color: var(--text-muted); text-transform: uppercase;">📊 Live Widget API:</span>
+          <input 
+            type="text" 
+            class="form-input svc-widget-url" 
+            value="${this.escapeHtml(svc.widget?.url || '')}" 
             data-cat-index="${catIdx}" 
             data-svc-index="${svcIdx}"
-            style="padding: 0.25rem 0.6rem; color: var(--status-offline);" 
-            title="Remove Service"
+            placeholder="API URL (e.g. http://pihole.local/admin/api.php?summaryRaw)" 
+            style="flex: 1; font-size: 0.75rem; padding: 0.25rem 0.5rem; font-family: var(--font-mono);"
+          />
+          <input 
+            type="text" 
+            class="form-input svc-widget-key" 
+            value="${this.escapeHtml(svc.widget?.jsonPath || '')}" 
+            data-cat-index="${catIdx}" 
+            data-svc-index="${svcIdx}"
+            placeholder="JSON Path (e.g. ads_blocked_today)" 
+            style="width: 150px; font-size: 0.75rem; padding: 0.25rem 0.5rem; font-family: var(--font-mono);"
+          />
+          <input 
+            type="text" 
+            class="form-input svc-widget-label" 
+            value="${this.escapeHtml(svc.widget?.label || '')}" 
+            data-cat-index="${catIdx}" 
+            data-svc-index="${svcIdx}"
+            placeholder="Label (e.g. Blocked)" 
+            style="width: 80px; font-size: 0.75rem; padding: 0.25rem 0.5rem;"
+          />
+          <button 
+            type="button" 
+            class="btn-secondary btn-test-widget" 
+            data-cat-index="${catIdx}" 
+            data-svc-index="${svcIdx}"
+            style="font-size: 0.6875rem; padding: 0.2rem 0.5rem;"
+            title="Test JSON API response"
           >
-            ✕
+            🧪 Test API
           </button>
         </div>
       </div>
@@ -338,33 +382,77 @@ export class ConfigEditor {
       });
     });
 
-    // Test ping buttons
-    document.querySelectorAll<HTMLButtonElement>('.ping-test-btn').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const url = btn.getAttribute('data-url');
-        if (!url) return;
+    // Widget inputs
+    document.querySelectorAll<HTMLInputElement>('.svc-widget-url').forEach((input) => {
+      input.addEventListener('change', () => {
+        const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
+        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        if (svc) {
+          if (!svc.widget) svc.widget = { type: 'stat' };
+          svc.widget.url = input.value;
+        }
+      });
+    });
 
-        btn.className = 'ping-test-btn testing';
+    document.querySelectorAll<HTMLInputElement>('.svc-widget-key').forEach((input) => {
+      input.addEventListener('change', () => {
+        const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
+        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        if (svc) {
+          if (!svc.widget) svc.widget = { type: 'stat' };
+          svc.widget.jsonPath = input.value;
+        }
+      });
+    });
+
+    document.querySelectorAll<HTMLInputElement>('.svc-widget-label').forEach((input) => {
+      input.addEventListener('change', () => {
+        const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
+        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        if (svc) {
+          if (!svc.widget) svc.widget = { type: 'stat' };
+          svc.widget.label = input.value;
+        }
+      });
+    });
+
+    // Test Widget API button
+    document.querySelectorAll<HTMLButtonElement>('.btn-test-widget').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(btn.getAttribute('data-svc-index') || '0', 10);
+        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const url = svc?.widget?.url;
+        const jsonPath = svc?.widget?.jsonPath;
+
+        if (!url) {
+          alert('Please enter an API URL first');
+          return;
+        }
+
         btn.textContent = '⏳ Testing...';
 
         try {
-          const res = await fetch('/api/v1/health/ping', {
+          const res = await fetch('/api/v1/widgets/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url }),
+            body: JSON.stringify({ url, jsonPath, headers: svc?.widget?.headers }),
           });
-
           const data = await res.json();
-          if (data.status === 'online') {
-            btn.className = 'ping-test-btn online';
-            btn.textContent = `✓ ${data.latencyMs}ms (${data.statusCode || 200})`;
+
+          if (data.success) {
+            btn.textContent = `✓ Value: ${JSON.stringify(data.extractedValue ?? 'OK')}`;
+            btn.style.color = 'var(--status-online)';
           } else {
-            btn.className = 'ping-test-btn offline';
-            btn.textContent = `✕ Offline (${data.error || 'Timeout'})`;
+            btn.textContent = `✕ ${data.error || 'Failed'}`;
+            btn.style.color = 'var(--status-offline)';
           }
         } catch {
-          btn.className = 'ping-test-btn offline';
-          btn.textContent = '✕ Unreachable';
+          btn.textContent = '✕ Error';
+          btn.style.color = 'var(--status-offline)';
         }
       });
     });

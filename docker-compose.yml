@@ -20,6 +20,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - TZ=UTC
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/v1/health"]
       interval: 30s
