@@ -1,14 +1,15 @@
 # ==============================================================================
 # DashPark Docker Compose Setup
 # Documentation: https://github.com/jack11122233311/DashPark
+#
+# Quick Setup:
+#   mkdir -p ./config ./icons && sudo chown -R 1000:1000 ./config ./icons
+#   docker compose up -d
 # ==============================================================================
 
 services:
   dashpark:
     image: ghcr.io/jack11122233311/dashpark:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: dashpark
     restart: unless-stopped
     ports:
@@ -16,12 +17,12 @@ services:
     volumes:
       - ./config:/app/config
       - ./icons:/app/icons
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - NODE_ENV=production
       - PORT=3000
       - TZ=UTC
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/v1/health"]
       interval: 30s
