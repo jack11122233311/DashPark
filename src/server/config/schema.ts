@@ -1,0 +1,59 @@
+import { z } from 'zod';
+
+export const ThemeNameSchema = z.enum(['dark', 'light', 'nord', 'dracula', 'cyberpunk', 'glass']).default('dark');
+export const LayoutModeSchema = z.enum(['grid', 'bento', 'compact']).default('grid');
+export const ServiceTargetSchema = z.enum(['_blank', '_self']).default('_blank');
+
+export const DashboardMetaSchema = z.object({
+  title: z.string().min(1, 'Dashboard title cannot be empty').default('DashPark'),
+  subtitle: z.string().optional().default(''),
+  logo: z.string().optional().default(''),
+  theme: ThemeNameSchema,
+  accentColor: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Must be a valid hex color code (e.g. #6366f1)').optional().default('#6366f1'),
+  layout: LayoutModeSchema,
+  showClock: z.boolean().default(true),
+  clockFormat: z.enum(['12h', '24h']).default('24h'),
+  searchEngine: z.object({
+    enabled: z.boolean().default(true),
+    provider: z.enum(['duckduckgo', 'google', 'brave', 'custom']).default('duckduckgo'),
+    customUrl: z.string().optional().default(''),
+  }).optional().default({ enabled: true, provider: 'duckduckgo', customUrl: '' }),
+}).default({
+  title: 'DashPark',
+  subtitle: '',
+  logo: '',
+  theme: 'dark',
+  accentColor: '#6366f1',
+  layout: 'grid',
+  showClock: true,
+  clockFormat: '24h',
+  searchEngine: { enabled: true, provider: 'duckduckgo', customUrl: '' },
+});
+
+export const ServiceItemSchema = z.object({
+  id: z.string().min(1, 'Service ID is required'),
+  name: z.string().min(1, 'Service name is required'),
+  url: z.string().url('Service URL must be a valid absolute URL (e.g. http://192.168.1.50:8080 or https://plex.local)'),
+  icon: z.string().optional().default(''),
+  description: z.string().optional().default(''),
+  pingUrl: z.string().url('Ping URL must be a valid URL').optional().or(z.literal('')),
+  target: ServiceTargetSchema,
+  tags: z.array(z.string()).optional().default([]),
+});
+
+export const CategorySchema = z.object({
+  id: z.string().min(1, 'Category ID is required'),
+  name: z.string().min(1, 'Category name is required'),
+  icon: z.string().optional().default('folder'),
+  columns: z.number().int().min(1).max(12).optional().default(4),
+  collapsed: z.boolean().optional().default(false),
+  services: z.array(ServiceItemSchema).default([]),
+});
+
+export const DashParkConfigSchema = z.object({
+  version: z.string().default('0.0.1'),
+  meta: DashboardMetaSchema,
+  categories: z.array(CategorySchema).default([]),
+});
+
+export type ParsedConfig = z.infer<typeof DashParkConfigSchema>;

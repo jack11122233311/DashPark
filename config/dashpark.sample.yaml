@@ -1,0 +1,129 @@
+# ==============================================================================
+# DashPark Configuration File (v0.0.1)
+# Documentation: https://github.com/jack11122233311/DashPark
+# ==============================================================================
+
+version: "0.0.1"
+
+meta:
+  title: "DashPark"
+  subtitle: "Personal Homelab & Server Park"
+  logo: "" # Leave empty for default DashPark icon, or specify custom image path / URL
+  theme: "dark" # Options: dark, light, nord, dracula, cyberpunk, glass
+  accentColor: "#6366f1" # Primary brand accent color (hex)
+  layout: "grid" # Options: grid, bento, compact
+  showClock: true
+  clockFormat: "24h" # Options: 12h, 24h
+  searchEngine:
+    enabled: true
+    provider: "duckduckgo" # Options: duckduckgo, google, brave, custom
+    customUrl: ""
+
+# ==============================================================================
+# Categories & Services
+# ==============================================================================
+categories:
+  - id: "media"
+    name: "Media & Streaming"
+    icon: "film"
+    columns: 4
+    services:
+      - id: "plex"
+        name: "Plex Media Server"
+        url: "http://plex.local:32400"
+        icon: "plex"
+        description: "Movies, TV Shows & Music Streaming"
+        pingUrl: "http://plex.local:32400/web/index.html"
+        target: "_blank"
+        tags: ["media", "streaming"]
+
+      - id: "jellyfin"
+        name: "Jellyfin"
+        url: "http://jellyfin.local:8096"
+        icon: "jellyfin"
+        description: "Free Software Media System"
+        pingUrl: "http://jellyfin.local:8096"
+        target: "_blank"
+        tags: ["media", "opensource"]
+
+      - id: "sonarr"
+        name: "Sonarr"
+        url: "http://sonarr.local:8989"
+        icon: "sonarr"
+        description: "TV Series Collection Manager"
+        target: "_blank"
+
+      - id: "radarr"
+        name: "Radarr"
+        url: "http://radarr.local:7878"
+        icon: "radarr"
+        description: "Movie Collection Manager"
+        target: "_blank"
+
+  - id: "infrastructure"
+    name: "Infrastructure & Management"
+    icon: "server"
+    columns: 4
+    services:
+      - id: "proxmox"
+        name: "Proxmox VE"
+        url: "https://proxmox.local:8006"
+        icon: "proxmox"
+        description: "Hypervisor & VM Management"
+        pingUrl: "https://proxmox.local:8006"
+        target: "_blank"
+        tags: ["virtualization", "cluster"]
+
+      - id: "portainer"
+        name: "Portainer"
+        url: "https://portainer.local:9443"
+        icon: "portainer"
+        description: "Container Management Platform"
+        target: "_blank"
+        tags: ["docker", "containers"]
+
+      - id: "truenas"
+        name: "TrueNAS Scale"
+        url: "https://truenas.local"
+        icon: "truenas"
+        description: "ZFS Storage & File Shares"
+        target: "_blank"
+
+      - id: "homeassistant"
+        name: "Home Assistant"
+        url: "http://homeassistant.local:8123"
+        icon: "home-assistant"
+        description: "Smart Home Automation"
+        pingUrl: "http://homeassistant.local:8123"
+        target: "_blank"
+        tags: ["iot", "automation"]
+
+  - id: "network"
+    name: "Network & Security"
+    icon: "shield-check"
+    columns: 3
+    services:
+      - id: "pihole"
+        name: "Pi-hole"
+        url: "http://pihole.local/admin"
+        icon: "pi-hole"
+        description: "Network-wide Ad & Tracker Blocker"
+        pingUrl: "http://pihole.local/admin/index.php"
+        target: "_blank"
+        tags: ["dns", "adblock"]
+
+      - id: "vaultwarden"
+        name: "Vaultwarden"
+        url: "https://vault.local"
+        icon: "vaultwarden"
+        description: "Bitwarden-compatible Password Vault"
+        target: "_blank"
+        tags: ["security", "passwords"]
+
+      - id: "grafana"
+        name: "Grafana"
+        url: "http://grafana.local:3000"
+        icon: "grafana"
+        description: "Homelab Telemetry & Dashboards"
+        target: "_blank"
+        tags: ["metrics", "monitoring"]

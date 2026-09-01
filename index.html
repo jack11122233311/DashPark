@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DashPark — Ultra-Lightweight Self-Hosted Dashboard</title>
+  <meta name="description" content="Ultra-lightweight, modern, self-hosted dashboard app for homelabs and servers." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/client/style.css" />
+</head>
+<body class="theme-dark">
+  <div id="app" class="dashboard-container">
+    <!-- Header -->
+    <header class="dashboard-header" id="dashboard-header">
+      <div class="header-left">
+        <div class="brand-logo" id="brand-logo">
+          <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M7 7h10" />
+            <path d="M7 12h10" />
+            <path d="M7 17h6" />
+          </svg>
+        </div>
+        <div class="brand-info">
+          <h1 class="brand-title" id="dashboard-title">DashPark</h1>
+          <p class="brand-subtitle" id="dashboard-subtitle">Homelab & Server Park</p>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="search-box-container" id="search-container">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input 
+            type="text" 
+            id="search-input" 
+            class="search-input" 
+            placeholder="Search services or press '/' to focus..." 
+            autocomplete="off" 
+            spellcheck="false"
+          />
+          <kbd class="search-shortcut">/</kbd>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="status-pill" id="server-status-pill">
+          <span class="status-dot online"></span>
+          <span id="server-stats-text">v0.0.1 • Connecting...</span>
+        </div>
+        <div class="clock-display" id="clock-display">00:00:00</div>
+      </div>
+    </header>
+
+    <!-- Error / Syntax Diagnostic Banner (Hidden by default) -->
+    <section id="diagnostic-banner" class="diagnostic-banner hidden" aria-live="polite">
+      <div class="diagnostic-header">
+        <div class="diagnostic-title">
+          <svg class="diagnostic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>Configuration Syntax Notice</span>
+        </div>
+        <span class="diagnostic-badge">Line <span id="diag-line">0</span>, Col <span id="diag-col">0</span></span>
+      </div>
+      <p id="diag-message" class="diagnostic-message"></p>
+      <pre id="diag-snippet" class="diagnostic-snippet"></pre>
+      <p class="diagnostic-hint">💡 DashPark caught this error safely. Fix the indentation or syntax in your <code>config/dashpark.yaml</code> file to reload.</p>
+    </section>
+
+    <!-- Main Grid Content -->
+    <main id="main-content" class="main-content">
+      <div id="categories-container" class="categories-container">
+        <!-- Rendered dynamically -->
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Loading DashPark environment...</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="dashboard-footer">
+      <div class="footer-content">
+        <span>DashPark v0.0.1</span>
+        <span>•</span>
+        <a href="https://github.com/jack11122233311/DashPark" target="_blank" rel="noopener noreferrer">GitHub (jack11122233311/DashPark)</a>
+        <span>•</span>
+        <span id="footer-memory">Memory: -- MB</span>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/client/main.ts"></script>
+</body>
+</html>
