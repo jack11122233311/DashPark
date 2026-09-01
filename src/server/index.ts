@@ -10,10 +10,11 @@ import { healthRoutes } from './routes/health.js';
 import { systemRoutes } from './routes/system.js';
 import { createConfigRoutes } from './routes/config.js';
 import { globalHealthChecker } from './services/health-checker.js';
+import { APP_VERSION } from '../shared/version.js';
 import type { ServerHealthResponse } from '../shared/types.js';
 
 const startTime = Date.now();
-const VERSION = '0.0.1';
+const VERSION = APP_VERSION;
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 

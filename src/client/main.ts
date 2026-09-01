@@ -274,9 +274,11 @@ class DashParkClient {
       const statsPill = document.getElementById('server-stats-text');
       const statusDot = document.querySelector('.status-dot');
       const footerMem = document.getElementById('footer-memory');
+      const footerVer = document.getElementById('footer-version');
 
       if (statsPill) statsPill.textContent = `v${data.version} • ${data.memoryUsageMb} MB RAM`;
       if (footerMem) footerMem.textContent = `Memory: ${data.memoryUsageMb} MB • Uptime: ${data.uptimeSeconds}s`;
+      if (footerVer) footerVer.textContent = `DashPark v${data.version}`;
       if (statusDot) {
         statusDot.className = 'status-dot online';
       }

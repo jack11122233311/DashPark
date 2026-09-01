@@ -56,6 +56,10 @@ if (fs.existsSync(pkgLockPath)) {
   fs.writeFileSync(pkgLockPath, JSON.stringify(pkgLock, null, 2) + '\n', 'utf-8');
 }
 
+// 3. Update src/shared/version.ts
+const versionTsPath = path.resolve(process.cwd(), 'src', 'shared', 'version.ts');
+fs.writeFileSync(versionTsPath, `export const APP_VERSION = '${nextVersion}';\n`, 'utf-8');
+
 console.log(`
 ✓ Updated package.json to ${nextVersion}
 ✓ Updated package-lock.json

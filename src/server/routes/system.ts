@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import os from 'node:os';
+import { APP_VERSION } from '../../shared/version.js';
 
 export const systemRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/api/v1/system/stats', async () => {
@@ -37,7 +38,7 @@ export const systemRoutes: FastifyPluginAsync = async (fastify) => {
         },
       },
       dashpark: {
-        version: '0.0.1',
+        version: APP_VERSION,
         uptimeSeconds: Math.floor(process.uptime()),
         heapUsedMb: processHeapMb,
         rssMb: processRssMb,
