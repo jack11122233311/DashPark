@@ -13,6 +13,8 @@ export class ConfigLoader extends EventEmitter {
   private watcher: fs.FSWatcher | null = null;
   private debounceTimer: NodeJS.Timeout | null = null;
 
+  private hasAttemptedInit: boolean = false;
+
   constructor(configDir?: string) {
     super();
     this.configDir = configDir || path.resolve(process.cwd(), 'config');
@@ -24,11 +26,14 @@ export class ConfigLoader extends EventEmitter {
    * (e.g., when an empty host directory is mounted into /app/config in Docker)
    */
   private ensureConfigInitialized(): void {
+    if (this.hasAttemptedInit) return;
+    this.hasAttemptedInit = true;
+
     if (!fs.existsSync(this.configDir)) {
       try {
         fs.mkdirSync(this.configDir, { recursive: true });
-      } catch (e) {
-        console.warn(`[DashPark] Could not create config directory ${this.configDir}:`, e);
+      } catch {
+        // Handled below if read-only
       }
     }
 
@@ -48,13 +53,17 @@ export class ConfigLoader extends EventEmitter {
         const containerDefault = path.resolve(process.cwd(), 'defaults', 'dashpark.sample.yaml');
         if (fs.existsSync(containerDefault)) {
           fs.copyFileSync(containerDefault, targetSampleFile);
-          console.log(`[DashPark] Auto-seeded default configuration from ${containerDefault} to ${targetSampleFile}`);
+          console.log(`[DashPark] Auto-seeded default configuration to ${targetSampleFile}`);
         } else {
           fs.writeFileSync(targetSampleFile, DEFAULT_SAMPLE_YAML, 'utf-8');
           console.log(`[DashPark] Auto-seeded embedded configuration to ${targetSampleFile}`);
         }
-      } catch (err) {
-        console.warn(`[DashPark] Could not auto-seed sample config to ${targetSampleFile} (will use in-memory fallback):`, err);
+      } catch (err: any) {
+        if (err?.code === 'EACCES' || err?.code === 'EPERM') {
+          console.log(`[DashPark] Notice: Mounted config folder is read-only (EACCES). Running with in-memory template.`);
+        } else {
+          console.warn(`[DashPark] Notice: Could not write sample config to disk (${err?.message || err}). Using in-memory fallback.`);
+        }
       }
     }
   }
