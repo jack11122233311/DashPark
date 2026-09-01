@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/client/style.css" />
+  <link rel="stylesheet" href="/src/client/editor/editor.css" />
 </head>
 <body class="theme-dark">
   <div id="app" class="dashboard-container">
@@ -93,6 +94,15 @@
           </svg>
         </div>
 
+        <!-- Edit Config Button -->
+        <button type="button" id="btn-open-editor" class="btn-secondary" title="Edit Dashboard (Ctrl+E)" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.45rem 0.75rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+          <span>Edit</span>
+        </button>
+
         <!-- Server Health Status -->
         <div class="status-pill" id="server-status-pill">
           <span class="status-dot online"></span>
@@ -106,6 +116,9 @@
         </div>
       </div>
     </header>
+
+    <!-- System Telemetry Bar -->
+    <div id="system-telemetry-bar" class="system-telemetry-bar"></div>
 
     <!-- Error / Syntax Diagnostic Banner (Hidden by default) -->
     <section id="diagnostic-banner" class="diagnostic-banner hidden" aria-live="polite">
@@ -138,6 +151,51 @@
         </div>
       </div>
     </main>
+
+    <!-- In-App Configuration Editor Modal -->
+    <dialog id="editor-dialog" class="editor-dialog" aria-labelledby="editor-title">
+      <div class="editor-modal-container">
+        <!-- Header -->
+        <div class="editor-header">
+          <div class="editor-header-left">
+            <h2 id="editor-title" class="editor-title">Dashboard Configuration</h2>
+            <div class="editor-tabs" role="tablist">
+              <button type="button" class="editor-tab-btn active" data-tab="visual" role="tab">Visual Editor</button>
+              <button type="button" class="editor-tab-btn" data-tab="yaml" role="tab">Raw YAML Code</button>
+            </div>
+          </div>
+          <button type="button" id="editor-close-btn" class="editor-close-btn" aria-label="Close dialog">✕</button>
+        </div>
+
+        <!-- Body -->
+        <div class="editor-body">
+          <!-- Visual Tab Pane -->
+          <div id="editor-visual-pane" class="editor-pane active">
+            <div id="visual-categories-list"></div>
+          </div>
+
+          <!-- YAML Tab Pane -->
+          <div id="editor-yaml-pane" class="editor-pane">
+            <div class="yaml-editor-wrapper">
+              <div class="yaml-status-bar">
+                <span id="yaml-status-badge" class="yaml-status-badge valid">✓ Valid YAML Schema</span>
+                <span id="yaml-status-message" style="color: var(--text-muted);">Real-time syntax linting active</span>
+              </div>
+              <textarea id="yaml-textarea" class="yaml-textarea" spellcheck="false"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="editor-footer">
+          <span class="editor-footer-hint">Automatic backup will be created at <code>config/dashpark.yaml.bak</code></span>
+          <div class="editor-footer-actions">
+            <button type="button" id="editor-cancel-btn" class="btn-secondary">Cancel</button>
+            <button type="button" id="editor-save-btn" class="btn-primary">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
 
     <!-- Footer -->
     <footer class="dashboard-footer">

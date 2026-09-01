@@ -6,6 +6,10 @@ import fs from 'node:fs';
 import { ConfigLoader } from './config/loader.js';
 import { parseConfig } from './config/parser.js';
 import { iconRoutes } from './routes/icons.js';
+import { healthRoutes } from './routes/health.js';
+import { systemRoutes } from './routes/system.js';
+import { createConfigRoutes } from './routes/config.js';
+import { globalHealthChecker } from './services/health-checker.js';
 import type { ServerHealthResponse } from '../shared/types.js';
 
 const startTime = Date.now();
@@ -17,15 +21,18 @@ export const fastify = Fastify({
   logger: false,
 });
 
-const configLoader = new ConfigLoader();
+export const configLoader = new ConfigLoader();
 
 export async function setupServer() {
   await fastify.register(cors, {
     origin: true,
   });
 
-  // Register Icon Proxy and static /icons route
+  // Register Route Plugins
   await fastify.register(iconRoutes);
+  await fastify.register(healthRoutes);
+  await fastify.register(systemRoutes);
+  await fastify.register(createConfigRoutes(configLoader));
 
   // --- API Routes ---
 
@@ -61,6 +68,19 @@ export async function setupServer() {
 
     const result = parseConfig(content, Boolean(isJson));
     return reply.status(result.valid ? 200 : 422).send(result);
+  });
+
+  // Initial config load & start health checker
+  const initialConfig = configLoader.load();
+  if (initialConfig.config) {
+    globalHealthChecker.start(initialConfig.config);
+  }
+
+  // Hook config changes to update health checker
+  configLoader.on('changed', (updated) => {
+    if (updated.config) {
+      globalHealthChecker.updateConfig(updated.config);
+    }
   });
 
   // Static client serving
@@ -103,6 +123,8 @@ async function startServer() {
   🌐 Local URL:       http://localhost:${PORT}
   📡 API Health:      http://localhost:${PORT}/api/v1/health
   ⚙️  Config Engine:   http://localhost:${PORT}/api/v1/config
+  💓 Health Monitor:  http://localhost:${PORT}/api/v1/health/services
+  📊 System Stats:    http://localhost:${PORT}/api/v1/system/stats
   🖼️  Icon Proxy:      http://localhost:${PORT}/api/v1/icons/favicon
   ⚡ Startup Time:    ${elapsed}ms
   🧠 Memory Footprint: ${memMb} MB RAM

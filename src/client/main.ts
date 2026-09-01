@@ -7,16 +7,29 @@ import type {
   ErrorDiagnostic,
   LayoutMode,
   ThemeName,
+  HealthStatus,
 } from '../shared/types.js';
 import { globalIconResolver } from './icons/IconResolver.js';
 import { getSvgIcon, SVG_ICONS } from './icons/lucide-svgs.js';
+import { SystemWidget } from './widgets/SystemWidget.js';
+import { ConfigEditor } from './editor/ConfigEditor.js';
 
 // Extend window for global icon fallback callbacks
 declare global {
   interface Window {
     __dashParkIconLoaded?: (img: HTMLImageElement) => void;
     __dashParkIconError?: (img: HTMLImageElement) => void;
+    __dashParkToggleCategory?: (id: string) => void;
   }
+}
+
+interface ServiceHealthData {
+  serviceId: string;
+  status: HealthStatus;
+  latencyMs: number;
+  statusCode?: number;
+  error?: string;
+  lastCheckedAt: string;
 }
 
 class DashParkClient {
@@ -26,6 +39,10 @@ class DashParkClient {
   private currentLayout: LayoutMode = 'grid';
   private currentTheme: ThemeName = 'dark';
   private collapsedCategories: Set<string> = new Set();
+  private healthDataMap: Map<string, ServiceHealthData> = new Map();
+
+  public systemWidget: SystemWidget | null = null;
+  public configEditor: ConfigEditor | null = null;
 
   constructor() {
     this.initGlobalIconHandlers();
@@ -34,11 +51,30 @@ class DashParkClient {
     this.initSearch();
     this.initLayoutSwitcher();
     this.initThemeSelector();
+    this.initEditor();
     this.initKeyboardShortcuts();
+    this.initSystemWidget();
+
     this.loadData();
 
-    // Poll server health every 10 seconds
+    // Poll server health & service statuses periodically
     setInterval(() => this.updateServerHealth(), 10000);
+    setInterval(() => this.pollServiceHealth(), 15000);
+  }
+
+  private initSystemWidget(): void {
+    this.systemWidget = new SystemWidget('system-telemetry-bar');
+  }
+
+  private initEditor(): void {
+    this.configEditor = new ConfigEditor(() => {
+      this.loadConfig();
+    });
+
+    const openEditorBtn = document.getElementById('btn-open-editor');
+    openEditorBtn?.addEventListener('click', () => {
+      this.configEditor?.open();
+    });
   }
 
   private initGlobalIconHandlers(): void {
@@ -64,7 +100,6 @@ class DashParkClient {
       const candidates = candidatesStr ? candidatesStr.split('|') : [];
       let nextIndex = parseInt(wrapper.getAttribute('data-candidate-index') || '0', 10) + 1;
 
-      // Find next candidate that hasn't failed
       while (nextIndex < candidates.length && candidates[nextIndex] && candidates[nextIndex] === failedSrc) {
         nextIndex++;
       }
@@ -73,7 +108,6 @@ class DashParkClient {
         wrapper.setAttribute('data-candidate-index', String(nextIndex));
         img.src = candidates[nextIndex];
       } else {
-        // All image candidates failed -> gracefully switch to vector SVG or initials
         img.style.display = 'none';
         const fallbackContainer = wrapper.querySelector<HTMLElement>('.dashpark-icon-fallback');
         const vectorSpan = wrapper.querySelector<HTMLElement>('.dashpark-icon-vector');
@@ -156,7 +190,7 @@ class DashParkClient {
     try {
       localStorage.setItem('dashpark_layout_mode', layout);
     } catch {
-      // Ignore storage errors
+      // Ignore
     }
     this.updateLayoutButtons();
     if (this.configResponse?.config?.categories) {
@@ -200,8 +234,7 @@ class DashParkClient {
   private initKeyboardShortcuts(): void {
     const searchInput = document.getElementById('search-input') as HTMLInputElement | null;
     window.addEventListener('keydown', (e) => {
-      // '/' to focus search
-      if (e.key === '/' && document.activeElement !== searchInput) {
+      if (e.key === '/' && document.activeElement !== searchInput && !document.querySelector('dialog[open]')) {
         e.preventDefault();
         searchInput?.focus();
         searchInput?.select();
@@ -221,12 +254,15 @@ class DashParkClient {
       } else if ((e.ctrlKey || e.metaKey) && e.key === '3') {
         e.preventDefault();
         this.setLayout('compact');
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        this.configEditor?.open();
       }
     });
   }
 
   private async loadData(): Promise<void> {
-    await Promise.all([this.loadConfig(), this.updateServerHealth()]);
+    await Promise.all([this.loadConfig(), this.updateServerHealth(), this.pollServiceHealth()]);
   }
 
   private async updateServerHealth(): Promise<void> {
@@ -252,6 +288,40 @@ class DashParkClient {
         statusDot.className = 'status-dot error';
       }
     }
+  }
+
+  private async pollServiceHealth(): Promise<void> {
+    try {
+      const res = await fetch('/api/v1/health/services');
+      if (!res.ok) return;
+      const data: { services: Record<string, ServiceHealthData> } = await res.json();
+
+      Object.entries(data.services || {}).forEach(([id, result]) => {
+        this.healthDataMap.set(id, result);
+        this.updateServiceBadgeInDom(id, result);
+      });
+    } catch {
+      // Ignore background poll errors
+    }
+  }
+
+  private updateServiceBadgeInDom(serviceId: string, result: ServiceHealthData): void {
+    const badges = document.querySelectorAll<HTMLElement>(`[data-health-badge="${serviceId}"]`);
+    badges.forEach((badge) => {
+      badge.className = `service-latency-badge ${result.status}`;
+      if (result.status === 'online') {
+        badge.textContent = `${result.latencyMs}ms`;
+      } else if (result.status === 'degraded') {
+        badge.textContent = `${result.latencyMs}ms`;
+      } else if (result.status === 'offline') {
+        badge.textContent = 'Offline';
+      }
+    });
+
+    const dots = document.querySelectorAll<HTMLElement>(`[data-status-dot="${serviceId}"]`);
+    dots.forEach((dot) => {
+      dot.className = `service-status-dot ${result.status}`;
+    });
   }
 
   private async loadConfig(): Promise<void> {
@@ -385,8 +455,7 @@ class DashParkClient {
       })
       .join('');
 
-    // Attach global toggle
-    (window as unknown as { __dashParkToggleCategory: (id: string) => void }).__dashParkToggleCategory = (id: string) => {
+    window.__dashParkToggleCategory = (id: string) => {
       if (this.collapsedCategories.has(id)) {
         this.collapsedCategories.delete(id);
       } else {
@@ -413,6 +482,10 @@ class DashParkClient {
         ${allServices
           .map(({ service, categoryName, categoryIcon }, index) => {
             const isHero = index === 0 || index === 4 || index === 7;
+            const health = this.healthDataMap.get(service.id);
+            const status = health?.status || 'pending';
+            const latencyStr = health ? `${health.latencyMs}ms` : 'Ping';
+
             const iconHtml = globalIconResolver.renderIcon({
               serviceName: service.name,
               iconIdentifier: service.icon,
@@ -434,8 +507,9 @@ class DashParkClient {
                 <div class="bento-top-row">
                   ${iconHtml}
                   <div class="bento-meta">
+                    <span class="service-latency-badge ${status}" data-health-badge="${service.id}">${latencyStr}</span>
                     <span class="bento-category-badge">${this.escapeHtml(categoryName)}</span>
-                    <span class="service-status-dot online"></span>
+                    <span class="service-status-dot ${status}" data-status-dot="${service.id}"></span>
                   </div>
                 </div>
                 <div class="bento-bottom-row">
@@ -464,15 +538,19 @@ class DashParkClient {
         <table class="compact-table">
           <thead>
             <tr>
-              <th style="width: 40%;">Service</th>
+              <th style="width: 35%;">Service</th>
               <th style="width: 20%;">Category</th>
               <th style="width: 25%;">Destination URL</th>
-              <th style="width: 15%; text-align: right;">Status</th>
+              <th style="width: 20%; text-align: right;">Latency & Status</th>
             </tr>
           </thead>
           <tbody>
             ${allServices
               .map(({ service, categoryName, categoryIcon }) => {
+                const health = this.healthDataMap.get(service.id);
+                const status = health?.status || 'pending';
+                const latencyStr = health ? `${health.latencyMs}ms` : '---';
+
                 const iconHtml = globalIconResolver.renderIcon({
                   serviceName: service.name,
                   iconIdentifier: service.icon,
@@ -504,8 +582,9 @@ class DashParkClient {
                       </a>
                     </td>
                     <td style="text-align: right;">
-                      <span class="status-pill" style="padding: 0.2rem 0.6rem; font-size: 0.6875rem;">
-                        <span class="status-dot online"></span> Online
+                      <span class="service-latency-badge ${status}" data-health-badge="${service.id}">
+                        <span class="service-status-dot ${status}" data-status-dot="${service.id}" style="width: 5px; height: 5px;"></span>
+                        ${latencyStr}
                       </span>
                     </td>
                   </tr>
@@ -519,6 +598,10 @@ class DashParkClient {
   }
 
   private renderStandardServiceCard(svc: ServiceItem, categoryIcon?: string): string {
+    const health = this.healthDataMap.get(svc.id);
+    const status = health?.status || 'pending';
+    const latencyStr = health ? `${health.latencyMs}ms` : 'Ping';
+
     const iconHtml = globalIconResolver.renderIcon({
       serviceName: svc.name,
       iconIdentifier: svc.icon,
@@ -546,7 +629,7 @@ class DashParkClient {
         <div class="service-content">
           <div class="service-header-row">
             <h3 class="service-name">${this.escapeHtml(svc.name)}</h3>
-            <span class="service-status-dot online"></span>
+            <span class="service-latency-badge ${status}" data-health-badge="${svc.id}">${latencyStr}</span>
           </div>
           ${svc.description ? `<p class="service-desc">${this.escapeHtml(svc.description)}</p>` : ''}
           ${tagsHtml ? `<div class="service-tags-row">${tagsHtml}</div>` : ''}

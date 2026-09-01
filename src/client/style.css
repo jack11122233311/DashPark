@@ -1,6 +1,6 @@
 /* ==============================================================================
-   DashPark Design System & Layout Modes (v0.0.1 - Phase 2)
-   Zero-Runtime CSS, Responsive, Glassmorphism, 3 Layout Modes
+   DashPark Design System & Layout Modes (v0.0.1 - Phase 3)
+   Zero-Runtime CSS, Responsive, Glassmorphism, 3 Layout Modes, Telemetry & Health
    ============================================================================== */
 
 @import './themes.css';
@@ -68,7 +68,7 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .header-left {
@@ -272,7 +272,12 @@ body {
   box-shadow: 0 0 8px var(--status-online);
 }
 
-.status-dot.error {
+.status-dot.degraded {
+  background: var(--status-degraded);
+  box-shadow: 0 0 8px var(--status-degraded);
+}
+
+.status-dot.offline {
   background: var(--status-offline);
   box-shadow: 0 0 8px var(--status-offline);
 }
@@ -299,6 +304,101 @@ body {
   font-size: 0.6875rem;
   color: var(--text-muted);
   font-weight: 500;
+}
+
+/* ==============================================================================
+   System Telemetry Bar
+   ============================================================================== */
+
+.system-telemetry-bar {
+  margin-bottom: 1.25rem;
+}
+
+.telemetry-bar-inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.telemetry-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.625rem 1rem;
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.telemetry-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.telemetry-value {
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  margin-top: 0.15rem;
+}
+
+.telemetry-value.highlight {
+  color: var(--accent-primary);
+}
+
+.telemetry-value.warn {
+  color: var(--status-degraded);
+}
+
+.telemetry-sub {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* ==============================================================================
+   Latency & Health Badges
+   ============================================================================== */
+
+.service-latency-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all var(--transition-fast);
+}
+
+.service-latency-badge.online {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.service-latency-badge.degraded {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.service-latency-badge.offline {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.service-latency-badge.pending {
+  background: rgba(100, 116, 139, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
 }
 
 /* ==============================================================================
@@ -340,93 +440,6 @@ body {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
   box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
-}
-
-/* ==============================================================================
-   Diagnostic Banner (YAML Syntax Resilience)
-   ============================================================================== */
-
-.diagnostic-banner {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  border-radius: var(--radius-md);
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15);
-  animation: slideDown 0.3s ease;
-}
-
-.diagnostic-banner.hidden {
-  display: none;
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.diagnostic-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-}
-
-.diagnostic-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #fca5a5;
-}
-
-.diagnostic-icon {
-  width: 20px;
-  height: 20px;
-  stroke: #ef4444;
-}
-
-.diagnostic-badge {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  background: rgba(239, 68, 68, 0.2);
-  color: #fecaca;
-  padding: 0.2rem 0.6rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-}
-
-.diagnostic-message {
-  font-size: 0.875rem;
-  color: #fee2e2;
-  margin-bottom: 0.75rem;
-}
-
-.diagnostic-snippet {
-  background: #05070c;
-  color: #fca5a5;
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  padding: 1rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  overflow-x: auto;
-  line-height: 1.6;
-  margin-bottom: 0.75rem;
-}
-
-.diagnostic-hint {
-  font-size: 0.8125rem;
-  color: var(--text-secondary);
-}
-
-.diagnostic-hint code {
-  font-family: var(--font-mono);
-  background: var(--bg-surface);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  color: var(--text-primary);
 }
 
 /* ==============================================================================
@@ -631,18 +644,6 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.service-status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--status-pending);
-  flex-shrink: 0;
-}
-
-.service-status-dot.online {
-  background: var(--status-online);
 }
 
 .service-desc {
