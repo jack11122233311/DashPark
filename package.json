@@ -32,7 +32,8 @@
     "start": "node dist/server/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "bump": "node scripts/bump.js"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",
