@@ -36,7 +36,7 @@ LABEL org.opencontainers.image.title="DashPark" \
 WORKDIR /app
 
 # Create necessary directories and set ownership to non-root user 'node' (UID: 1000)
-RUN mkdir -p /app/config /app/icons /app/dist && \
+RUN mkdir -p /app/config /app/defaults /app/icons /app/dist && \
     chown -R node:node /app
 
 # Copy production node_modules and built application from builder stage
@@ -44,6 +44,7 @@ COPY --chown=node:node --from=builder /app/node_modules ./node_modules
 COPY --chown=node:node --from=builder /app/dist ./dist
 COPY --chown=node:node --from=builder /app/package.json ./package.json
 COPY --chown=node:node --from=builder /app/config/dashpark.sample.yaml ./config/dashpark.sample.yaml
+COPY --chown=node:node --from=builder /app/config/dashpark.sample.yaml ./defaults/dashpark.sample.yaml
 
 # Set production environment variables
 ENV NODE_ENV=production \

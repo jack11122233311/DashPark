@@ -5,18 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.3] - 2026-09-02
+
+### Fixed
+- **Docker Empty Volume Auto-Seeding**: `ConfigLoader` now automatically detects when `/app/config` is mounted as an empty host volume and auto-seeds `dashpark.sample.yaml` from built-in templates, preventing "Configuration file not found" errors on fresh Docker setups.
+- **CSS Spinner & Loading State Constraints**: Added explicit sizing and animation rules to `.loading-state` and `.spinner` in `style.css` to prevent oversized ring rendering during startup.
+- **Centralized Version Synchronization**: Centralized `APP_VERSION` across server endpoints, system telemetry, and build scripts.
+
+### Added
+- **Embedded Fallback Configuration**: In-memory parsing fallback ensures DashPark boots into a rich homelab dashboard even on read-only filesystems.
+- **Comprehensive 21-Service Example Homelab Dashboard**: Enriched `dashpark.sample.yaml` featuring 21 showcase services across 5 distinct categories (Media, Infrastructure, Security, Smart Home, Monitoring).
+- **Auto-Seed Unit Test**: Added `tests/config-loader.test.ts` verifying automatic sample seeding in empty directory environments.
+
 ## [0.0.2] - 2026-09-02
 
 ### Added
-- **Comprehensive Example Dashboard**: Enriched `dashpark.sample.yaml` showcasing 21 popular homelab services across 5 distinct categories:
-  - 🎬 Media & Streaming (Plex, Jellyfin, Sonarr, Radarr, Overseerr)
-  - 🖥️ Infrastructure & Virtualization (Proxmox VE, Portainer, TrueNAS, Dockge)
-  - 🛡️ Network, DNS & Security (Pi-hole, AdGuard Home, Vaultwarden, Nginx Proxy Manager, Cloudflare)
-  - 🏠 Smart Home & Automation (Home Assistant, Zigbee2MQTT, Node-RED)
-  - 📊 Telemetry, Metrics & Downloads (Grafana, Prometheus, qBittorrent, Uptime Kuma)
-- **Rich Metadata & Health Endpoints**: Configured health check ping URLs, tag taxonomies, and multi-tier icon identifiers for all example services.
-- **Customization Guide Comments**: Inline documentation in `dashpark.sample.yaml` for themes, layouts, search engines, and column counts.
-- **Automated Test Validation**: Updated test suite to verify full parsing and structure of the 5 showcase categories.
+- **Example Dashboard Configuration**: 21 popular homelab services across 5 distinct categories.
+- **Enriched Metadata**: Health check ping URLs, tag taxonomies, and multi-tier icon identifiers.
 
 ## [0.0.1] - 2026-09-02
 

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { parseConfig, type ParseResult } from './parser.js';
+import { DEFAULT_SAMPLE_YAML } from './default-config.js';
 import type { ConfigResponse } from '../../shared/types.js';
 
 export class ConfigLoader extends EventEmitter {
@@ -15,12 +16,55 @@ export class ConfigLoader extends EventEmitter {
   constructor(configDir?: string) {
     super();
     this.configDir = configDir || path.resolve(process.cwd(), 'config');
+    this.ensureConfigInitialized();
+  }
+
+  /**
+   * Auto-seeds the default sample configuration if the config directory is empty
+   * (e.g., when an empty host directory is mounted into /app/config in Docker)
+   */
+  private ensureConfigInitialized(): void {
+    if (!fs.existsSync(this.configDir)) {
+      try {
+        fs.mkdirSync(this.configDir, { recursive: true });
+      } catch (e) {
+        console.warn(`[DashPark] Could not create config directory ${this.configDir}:`, e);
+      }
+    }
+
+    const targetSampleFile = path.join(this.configDir, 'dashpark.sample.yaml');
+    const existingCandidates = [
+      path.join(this.configDir, 'dashpark.yaml'),
+      path.join(this.configDir, 'dashpark.yml'),
+      path.join(this.configDir, 'dashpark.json'),
+      targetSampleFile,
+    ];
+
+    const hasAnyConfig = existingCandidates.some((f) => fs.existsSync(f));
+
+    if (!hasAnyConfig) {
+      try {
+        // Look for built-in container defaults or write embedded template
+        const containerDefault = path.resolve(process.cwd(), 'defaults', 'dashpark.sample.yaml');
+        if (fs.existsSync(containerDefault)) {
+          fs.copyFileSync(containerDefault, targetSampleFile);
+          console.log(`[DashPark] Auto-seeded default configuration from ${containerDefault} to ${targetSampleFile}`);
+        } else {
+          fs.writeFileSync(targetSampleFile, DEFAULT_SAMPLE_YAML, 'utf-8');
+          console.log(`[DashPark] Auto-seeded embedded configuration to ${targetSampleFile}`);
+        }
+      } catch (err) {
+        console.warn(`[DashPark] Could not auto-seed sample config to ${targetSampleFile} (will use in-memory fallback):`, err);
+      }
+    }
   }
 
   /**
    * Discovers the best configuration file in priority order
    */
   public findConfigFile(): { filePath: string; isSample: boolean; isJson: boolean } {
+    this.ensureConfigInitialized();
+
     const candidates = [
       { name: 'dashpark.yaml', isSample: false, isJson: false },
       { name: 'dashpark.yml', isSample: false, isJson: false },
@@ -29,14 +73,6 @@ export class ConfigLoader extends EventEmitter {
       { name: 'dashpark.sample.yml', isSample: true, isJson: false },
     ];
 
-    if (!fs.existsSync(this.configDir)) {
-      try {
-        fs.mkdirSync(this.configDir, { recursive: true });
-      } catch (e) {
-        console.error(`[DashPark] Failed to create config dir: ${this.configDir}`, e);
-      }
-    }
-
     for (const c of candidates) {
       const fullPath = path.join(this.configDir, c.name);
       if (fs.existsSync(fullPath)) {
@@ -44,7 +80,7 @@ export class ConfigLoader extends EventEmitter {
       }
     }
 
-    // Default to dashpark.sample.yaml if none found
+    // Default to dashpark.sample.yaml
     const samplePath = path.join(this.configDir, 'dashpark.sample.yaml');
     return { filePath: samplePath, isSample: true, isJson: false };
   }
@@ -57,19 +93,16 @@ export class ConfigLoader extends EventEmitter {
     this.currentFilePath = filePath;
 
     if (!fs.existsSync(filePath)) {
+      // Graceful in-memory fallback parsing if file could not be written to disk
+      const fallbackResult = parseConfig(DEFAULT_SAMPLE_YAML, false);
       return {
-        valid: false,
-        source: 'fallback',
-        filePath,
+        valid: fallbackResult.valid,
+        source: 'sample',
+        filePath: 'embedded://dashpark.sample.yaml',
         lastLoadedAt: new Date().toISOString(),
-        diagnostics: [
-          {
-            line: 1,
-            column: 1,
-            message: `Configuration file not found at ${filePath}. Please create dashpark.yaml in the config directory.`,
-            severity: 'error',
-          },
-        ],
+        config: fallbackResult.config,
+        diagnostics: [],
+        rawYaml: DEFAULT_SAMPLE_YAML,
       };
     }
 
