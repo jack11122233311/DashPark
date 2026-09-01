@@ -1,17 +1,23 @@
 # ==============================================================================
-# DashPark Configuration File (v0.0.1)
+# 🚀 DashPark Sample Configuration File (v0.0.2)
 # Documentation: https://github.com/jack11122233311/DashPark
+#
+# Customization Guide:
+# - Theme Presets: dark (default), nord, dracula, catppuccin, cyberpunk, glass, light
+# - Layout Modes:  grid (categorized columns), bento (modular cards), compact (dense list)
+# - Clock Formats: 24h, 12h
+# - Icon Cascades: Local (/icons/name.png) -> Dashboard-Icons -> Simple Icons -> Favicon Proxy
 # ==============================================================================
 
-version: "0.0.1"
+version: "0.0.2"
 
 meta:
   title: "DashPark"
   subtitle: "Personal Homelab & Server Park"
-  logo: "" # Leave empty for default DashPark icon, or specify custom image path / URL
-  theme: "dark" # Options: dark, light, nord, dracula, cyberpunk, glass
-  accentColor: "#6366f1" # Primary brand accent color (hex)
-  layout: "grid" # Options: grid, bento, compact
+  logo: "" # Leave empty for default DashPark icon, or specify custom image URL/path
+  theme: "dark" # Options: dark, nord, dracula, catppuccin, cyberpunk, glass, light
+  accentColor: "#6366f1" # Primary brand accent color (hex format)
+  layout: "grid" # Default layout: grid, bento, compact
   showClock: true
   clockFormat: "24h" # Options: 12h, 24h
   searchEngine:
@@ -20,65 +26,87 @@ meta:
     customUrl: ""
 
 # ==============================================================================
-# Categories & Services
+# Categories & Homelab Services (21 Showcase Services across 5 Categories)
 # ==============================================================================
 categories:
+  # ----------------------------------------------------------------------------
+  # 1. Media & Streaming
+  # ----------------------------------------------------------------------------
   - id: "media"
     name: "Media & Streaming"
     icon: "film"
     columns: 4
+    collapsed: false
     services:
       - id: "plex"
         name: "Plex Media Server"
         url: "http://plex.local:32400"
         icon: "plex"
-        description: "Movies, TV Shows & Music Streaming"
+        description: "Movies, TV Series & Music Library"
         pingUrl: "http://plex.local:32400/web/index.html"
         target: "_blank"
-        tags: ["media", "streaming"]
+        tags: ["media", "streaming", "video"]
 
       - id: "jellyfin"
         name: "Jellyfin"
         url: "http://jellyfin.local:8096"
         icon: "jellyfin"
-        description: "Free Software Media System"
+        description: "Open Source Media Streaming Server"
         pingUrl: "http://jellyfin.local:8096"
         target: "_blank"
-        tags: ["media", "opensource"]
+        tags: ["media", "opensource", "streaming"]
 
       - id: "sonarr"
         name: "Sonarr"
         url: "http://sonarr.local:8989"
         icon: "sonarr"
-        description: "TV Series Collection Manager"
+        description: "Smart TV Series Collection Manager"
+        pingUrl: "http://sonarr.local:8989/api/v3/system/status"
         target: "_blank"
+        tags: ["media", "automation", "tv"]
 
       - id: "radarr"
         name: "Radarr"
         url: "http://radarr.local:7878"
         icon: "radarr"
-        description: "Movie Collection Manager"
+        description: "Movie Collection & Download Manager"
+        pingUrl: "http://radarr.local:7878/api/v3/system/status"
         target: "_blank"
+        tags: ["media", "automation", "movies"]
 
+      - id: "overseerr"
+        name: "Overseerr"
+        url: "http://overseerr.local:5055"
+        icon: "overseerr"
+        description: "Media Request & Discovery Manager"
+        pingUrl: "http://overseerr.local:5055/api/v1/status"
+        target: "_blank"
+        tags: ["media", "requests"]
+
+  # ----------------------------------------------------------------------------
+  # 2. Infrastructure & Virtualization
+  # ----------------------------------------------------------------------------
   - id: "infrastructure"
-    name: "Infrastructure & Management"
+    name: "Infrastructure & Virtualization"
     icon: "server"
     columns: 4
+    collapsed: false
     services:
       - id: "proxmox"
         name: "Proxmox VE"
         url: "https://proxmox.local:8006"
         icon: "proxmox"
-        description: "Hypervisor & VM Management"
+        description: "Enterprise Hypervisor & VM Management"
         pingUrl: "https://proxmox.local:8006"
         target: "_blank"
-        tags: ["virtualization", "cluster"]
+        tags: ["virtualization", "cluster", "kvm"]
 
       - id: "portainer"
         name: "Portainer"
         url: "https://portainer.local:9443"
         icon: "portainer"
-        description: "Container Management Platform"
+        description: "Container & Kubernetes Management"
+        pingUrl: "https://portainer.local:9443/api/system/status"
         target: "_blank"
         tags: ["docker", "containers"]
 
@@ -86,22 +114,28 @@ categories:
         name: "TrueNAS Scale"
         url: "https://truenas.local"
         icon: "truenas"
-        description: "ZFS Storage & File Shares"
+        description: "ZFS Storage Pool & Network Shares"
+        pingUrl: "https://truenas.local"
         target: "_blank"
+        tags: ["storage", "zfs", "nas"]
 
-      - id: "homeassistant"
-        name: "Home Assistant"
-        url: "http://homeassistant.local:8123"
-        icon: "home-assistant"
-        description: "Smart Home Automation"
-        pingUrl: "http://homeassistant.local:8123"
+      - id: "dockge"
+        name: "Dockge"
+        url: "http://dockge.local:5001"
+        icon: "docker"
+        description: "Reactive Docker Compose Manager"
+        pingUrl: "http://dockge.local:5001"
         target: "_blank"
-        tags: ["iot", "automation"]
+        tags: ["docker", "compose"]
 
-  - id: "network"
+  # ----------------------------------------------------------------------------
+  # 3. Network, DNS & Security
+  # ----------------------------------------------------------------------------
+  - id: "network-security"
     name: "Network & Security"
     icon: "shield-check"
-    columns: 3
+    columns: 4
+    collapsed: false
     services:
       - id: "pihole"
         name: "Pi-hole"
@@ -110,20 +144,120 @@ categories:
         description: "Network-wide Ad & Tracker Blocker"
         pingUrl: "http://pihole.local/admin/index.php"
         target: "_blank"
-        tags: ["dns", "adblock"]
+        tags: ["dns", "adblock", "security"]
+
+      - id: "adguard"
+        name: "AdGuard Home"
+        url: "http://adguard.local:3000"
+        icon: "adguard-home"
+        description: "DNS Privacy & Content Filtering"
+        pingUrl: "http://adguard.local:3000/control/status"
+        target: "_blank"
+        tags: ["dns", "adblock", "privacy"]
 
       - id: "vaultwarden"
         name: "Vaultwarden"
         url: "https://vault.local"
         icon: "vaultwarden"
         description: "Bitwarden-compatible Password Vault"
+        pingUrl: "https://vault.local/alive"
         target: "_blank"
-        tags: ["security", "passwords"]
+        tags: ["security", "passwords", "vault"]
 
+      - id: "nginx-proxy-manager"
+        name: "Nginx Proxy Manager"
+        url: "http://npm.local:81"
+        icon: "nginx-proxy-manager"
+        description: "Reverse Proxy & SSL Certificate Portal"
+        pingUrl: "http://npm.local:81"
+        target: "_blank"
+        tags: ["proxy", "ssl", "network"]
+
+      - id: "cloudflare"
+        name: "Cloudflare Zero Trust"
+        url: "https://dash.cloudflare.com"
+        icon: "cloudflare"
+        description: "Tunnels, DNS & Edge Security"
+        target: "_blank"
+        tags: ["dns", "cloud", "security"]
+
+  # ----------------------------------------------------------------------------
+  # 4. Smart Home & Automation
+  # ----------------------------------------------------------------------------
+  - id: "automation"
+    name: "Smart Home & Automation"
+    icon: "home"
+    columns: 3
+    collapsed: false
+    services:
+      - id: "homeassistant"
+        name: "Home Assistant"
+        url: "http://homeassistant.local:8123"
+        icon: "home-assistant"
+        description: "Open-source Home Automation Platform"
+        pingUrl: "http://homeassistant.local:8123"
+        target: "_blank"
+        tags: ["iot", "automation", "smart-home"]
+
+      - id: "zigbee2mqtt"
+        name: "Zigbee2MQTT"
+        url: "http://zigbee.local:8080"
+        icon: "zigbee2mqtt"
+        description: "Zigbee to MQTT Device Bridge"
+        pingUrl: "http://zigbee.local:8080"
+        target: "_blank"
+        tags: ["iot", "zigbee", "mqtt"]
+
+      - id: "nodered"
+        name: "Node-RED"
+        url: "http://nodered.local:1880"
+        icon: "node-red"
+        description: "Low-code Flow-based Automation Engine"
+        pingUrl: "http://nodered.local:1880"
+        target: "_blank"
+        tags: ["automation", "flow"]
+
+  # ----------------------------------------------------------------------------
+  # 5. Telemetry, Metrics & Downloads
+  # ----------------------------------------------------------------------------
+  - id: "monitoring-downloads"
+    name: "Monitoring & Telemetry"
+    icon: "activity"
+    columns: 4
+    collapsed: false
+    services:
       - id: "grafana"
         name: "Grafana"
         url: "http://grafana.local:3000"
         icon: "grafana"
-        description: "Homelab Telemetry & Dashboards"
+        description: "Real-time Metrics, Graphs & Dashboards"
+        pingUrl: "http://grafana.local:3000/api/health"
         target: "_blank"
-        tags: ["metrics", "monitoring"]
+        tags: ["metrics", "monitoring", "telemetry"]
+
+      - id: "prometheus"
+        name: "Prometheus"
+        url: "http://prometheus.local:9090"
+        icon: "prometheus"
+        description: "Time-series Monitoring Database"
+        pingUrl: "http://prometheus.local:9090/-/healthy"
+        target: "_blank"
+        tags: ["metrics", "timeseries"]
+
+      - id: "uptime-kuma"
+        name: "Uptime Kuma"
+        url: "http://uptime.local:3001"
+        icon: "uptime-kuma"
+        description: "Self-hosted Uptime Monitoring Service"
+        pingUrl: "http://uptime.local:3001"
+        target: "_blank"
+        tags: ["monitoring", "uptime"]
+
+      - id: "qbittorrent"
+        name: "qBittorrent"
+        url: "http://qbittorrent.local:8080"
+        icon: "qbittorrent"
+        description: "BitTorrent Download Client with Web UI"
+        pingUrl: "http://qbittorrent.local:8080"
+        target: "_blank"
+        tags: ["downloads", "torrent"]

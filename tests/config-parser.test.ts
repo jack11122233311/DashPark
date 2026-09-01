@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 describe('DashPark Config Parser Engine', () => {
-  it('should successfully parse a valid sample YAML configuration', () => {
+  it('should successfully parse the comprehensive sample YAML configuration', () => {
     const samplePath = path.resolve(process.cwd(), 'config', 'dashpark.sample.yaml');
     const sampleContent = fs.readFileSync(samplePath, 'utf-8');
 
@@ -12,20 +12,32 @@ describe('DashPark Config Parser Engine', () => {
     expect(result.valid).toBe(true);
     expect(result.diagnostics).toHaveLength(0);
     expect(result.config).toBeDefined();
-    expect(result.config?.version).toBe('0.0.1');
     expect(result.config?.meta.title).toBe('DashPark');
-    expect(result.config?.categories.length).toBeGreaterThanOrEqual(3);
-    
-    // Check first service
+    expect(result.config?.categories).toHaveLength(5);
+
+    // Verify all 5 showcase categories exist
+    const categoryIds = result.config?.categories.map((c) => c.id);
+    expect(categoryIds).toContain('media');
+    expect(categoryIds).toContain('infrastructure');
+    expect(categoryIds).toContain('network-security');
+    expect(categoryIds).toContain('automation');
+    expect(categoryIds).toContain('monitoring-downloads');
+
+    // Verify total service count across the sample
+    const totalServices = result.config?.categories.reduce((acc, c) => acc + c.services.length, 0);
+    expect(totalServices).toBe(21);
+
+    // Check media category details
     const mediaCat = result.config?.categories.find((c) => c.id === 'media');
     expect(mediaCat).toBeDefined();
-    expect(mediaCat?.services.length).toBeGreaterThan(0);
+    expect(mediaCat?.services.length).toBe(5);
     expect(mediaCat?.services[0].name).toBe('Plex Media Server');
+    expect(mediaCat?.services[0].tags).toContain('streaming');
   });
 
   it('should catch YAML syntax / indentation errors with line and column diagnostics', () => {
     const invalidYaml = `
-version: "0.0.1"
+version: "0.0.2"
 meta:
   title: "Broken Dashboard"
 categories:
@@ -44,7 +56,7 @@ categories:
 
   it('should catch schema validation errors (e.g. invalid URL)', () => {
     const invalidSchemaYaml = `
-version: "0.0.1"
+version: "0.0.2"
 meta:
   title: "DashPark"
 categories:
@@ -64,7 +76,7 @@ categories:
 
   it('should successfully parse valid JSON configuration', () => {
     const validJson = JSON.stringify({
-      version: '0.0.1',
+      version: '0.0.2',
       meta: {
         title: 'JSON Park',
         theme: 'nord',
