@@ -184,10 +184,10 @@ pages:
               - name: "Run Test"
                 url: "http://192.168.1.20:8080/test"
 
-  - id: "media"
-    name: "Media"
-    icon: "film"
-    description: "Streaming, DVR & Automated Media Processing"
+  - id: "media-infra"
+    name: "Media & Compute"
+    icon: "server"
+    description: "Streaming, Hypervisors, Storage & Smart Home"
     categories:
       - id: "media"
         name: "Media Servers & Streaming"
@@ -272,11 +272,6 @@ pages:
             bentoSpan: "1x1"
             tags: ["requests", "media"]
 
-  - id: "infra"
-    name: "Infrastructure & Automation"
-    icon: "server"
-    description: "Virtualization, Storage & Smart Home Infrastructure"
-    categories:
       - id: "infra"
         name: "Hypervisors & Containers"
         icon: "server"

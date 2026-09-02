@@ -1276,5 +1276,40 @@ body {
   }
 }
 
+/* ==============================================================================
+   🖼️ Live Wallpaper Studio & Glassmorphism Overlay
+   ============================================================================== */
 
+body.has-custom-wallpaper {
+  background-image: var(--bg-custom-image) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+}
 
+body.has-custom-wallpaper::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(10, 15, 29, var(--bg-dim-opacity, 0.55));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dashboard-container {
+  position: relative;
+  z-index: 1;
+}
+
+body.has-custom-wallpaper .dashboard-header,
+body.has-custom-wallpaper .service-card,
+body.has-custom-wallpaper .bento-card,
+body.has-custom-wallpaper .telemetry-item,
+body.has-custom-wallpaper .compact-list-wrapper {
+  backdrop-filter: blur(var(--glass-blur, 16px)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 16px)) !important;
+  background: rgba(15, 23, 42, var(--glass-opacity, 0.75)) !important;
+}

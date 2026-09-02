@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const ThemeNameSchema = z.enum(['dark', 'light', 'nord', 'dracula', 'cyberpunk', 'glass']).default('dark');
+export const ThemeNameSchema = z.enum(['dark', 'light', 'nord', 'dracula', 'cyberpunk', 'catppuccin', 'glass']).default('dark');
 export const LayoutModeSchema = z.enum(['grid', 'bento', 'compact']).default('grid');
 export const ServiceTargetSchema = z.enum(['_blank', '_self']).default('_blank');
 
@@ -10,12 +10,17 @@ export const DashboardMetaSchema = z.object({
   logo: z.string().optional().default(''),
   theme: ThemeNameSchema,
   accentColor: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, 'Must be a valid hex color code (e.g. #6366f1)').optional().default('#6366f1'),
+  backgroundUrl: z.string().optional().default(''),
+  glassBlur: z.number().min(0).max(50).optional().default(12),
+  glassOpacity: z.number().min(0).max(1).optional().default(0.75),
   layout: LayoutModeSchema,
   showClock: z.boolean().default(true),
   clockFormat: z.enum(['12h', '24h']).default('24h'),
+  showSeconds: z.boolean().optional().default(true),
+  showDate: z.boolean().optional().default(true),
   searchEngine: z.object({
     enabled: z.boolean().default(true),
-    provider: z.enum(['duckduckgo', 'google', 'brave', 'custom']).default('duckduckgo'),
+    provider: z.enum(['duckduckgo', 'google', 'brave', 'searxng', 'custom']).default('duckduckgo'),
     customUrl: z.string().optional().default(''),
   }).optional().default({ enabled: true, provider: 'duckduckgo', customUrl: '' }),
 }).default({
@@ -24,9 +29,14 @@ export const DashboardMetaSchema = z.object({
   logo: '',
   theme: 'dark',
   accentColor: '#6366f1',
+  backgroundUrl: '',
+  glassBlur: 12,
+  glassOpacity: 0.75,
   layout: 'grid',
   showClock: true,
   clockFormat: '24h',
+  showSeconds: true,
+  showDate: true,
   searchEngine: { enabled: true, provider: 'duckduckgo', customUrl: '' },
 });
 

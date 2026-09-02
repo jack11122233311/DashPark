@@ -1,12 +1,12 @@
-import type { DashParkConfig, Category, ServiceItem } from '../../shared/types.js';
+import type { DashParkConfig, Category, ServiceItem, ThemeName, LayoutMode } from '../../shared/types.js';
 import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
-import { HOMELAB_PRESETS } from './presets.js';
+import { HOMELAB_PRESETS, detectServiceFromUrl } from './presets.js';
 
 export class ConfigEditor {
   private dialog: HTMLDialogElement | null = null;
   private currentConfig: DashParkConfig | null = null;
   private rawYaml: string = '';
-  private activeTab: 'visual' | 'yaml' | 'guides' = 'visual';
+  private activeTab: 'visual' | 'settings' | 'yaml' | 'guides' = 'visual';
   private validationDebounceTimer: NodeJS.Timeout | null = null;
   private onSavedCallback: () => void;
   private activeEditingPageId: string = 'home';
@@ -36,7 +36,7 @@ export class ConfigEditor {
     const tabBtns = document.querySelectorAll<HTMLButtonElement>('.editor-tab-btn');
     tabBtns.forEach((btn) => {
       btn.addEventListener('click', () => {
-        const tab = btn.getAttribute('data-tab') as 'visual' | 'yaml' | 'guides';
+        const tab = btn.getAttribute('data-tab') as 'visual' | 'settings' | 'yaml' | 'guides';
         if (tab) this.switchTab(tab);
       });
     });
@@ -69,6 +69,7 @@ export class ConfigEditor {
       this.rawYaml = data.rawYaml || (data.config ? stringifyYaml(data.config) : '');
 
       this.renderVisualForm();
+      this.renderSettingsView();
       this.renderYamlEditor();
       this.renderGuidesView();
       this.dialog.showModal();
@@ -84,7 +85,7 @@ export class ConfigEditor {
     }
   }
 
-  private switchTab(tab: 'visual' | 'yaml' | 'guides'): void {
+  private switchTab(tab: 'visual' | 'settings' | 'yaml' | 'guides'): void {
     this.activeTab = tab;
 
     document.querySelectorAll('.editor-tab-btn').forEach((btn) => {
@@ -92,10 +93,12 @@ export class ConfigEditor {
     });
 
     const visualPane = document.getElementById('editor-visual-pane');
+    const settingsPane = document.getElementById('editor-settings-pane');
     const yamlPane = document.getElementById('editor-yaml-pane');
     const guidesPane = document.getElementById('editor-guides-pane');
 
     visualPane?.classList.toggle('active', tab === 'visual');
+    settingsPane?.classList.toggle('active', tab === 'settings');
     yamlPane?.classList.toggle('active', tab === 'yaml');
     guidesPane?.classList.toggle('active', tab === 'guides');
 
@@ -112,6 +115,8 @@ export class ConfigEditor {
         // Keep currentConfig if YAML has syntax error
       }
       this.renderVisualForm();
+    } else if (tab === 'settings') {
+      this.renderSettingsView();
     } else if (tab === 'yaml') {
       // Sync Visual Config into YAML textarea
       if (this.currentConfig) {
@@ -134,40 +139,79 @@ export class ConfigEditor {
     const pages = this.currentConfig.pages || [];
     const isMultiPage = pages.length > 0;
 
+    let activePage = isMultiPage ? pages.find((p) => p.id === this.activeEditingPageId) || pages[0] : null;
     let activeCategories: Category[] = [];
-    if (isMultiPage) {
-      const activePage = pages.find((p) => p.id === this.activeEditingPageId) || pages[0];
-      if (activePage) {
-        this.activeEditingPageId = activePage.id;
-        activeCategories = activePage.categories;
-      }
+
+    if (activePage) {
+      this.activeEditingPageId = activePage.id;
+      activeCategories = activePage.categories;
     } else {
       activeCategories = this.currentConfig.categories || [];
     }
 
+    const activePageIndex = pages.findIndex((p) => p.id === this.activeEditingPageId);
+
     const pagesHeaderHtml = isMultiPage
-      ? `<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; background: var(--bg-surface); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 0.5rem;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <span style="font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">📄 Page:</span>
-            ${pages
-              .map(
-                (p) => `
-                  <button 
-                    type="button" 
-                    class="page-tab-btn ${p.id === this.activeEditingPageId ? 'active' : ''}" 
-                    data-edit-page-id="${p.id}"
-                    style="padding: 0.25rem 0.65rem; font-size: 0.75rem;"
-                  >
-                    ${this.escapeHtml(p.name)}
-                  </button>
-                `
-              )
-              .join('')}
+      ? `<div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem; background: var(--bg-surface); padding: 0.875rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+          <!-- Top Row: Page Switcher Pills & Action Buttons -->
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+              <span style="font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">📄 Pages:</span>
+              ${pages
+                .map(
+                  (p) => `
+                    <button 
+                      type="button" 
+                      class="page-tab-btn ${p.id === this.activeEditingPageId ? 'active' : ''}" 
+                      data-edit-page-id="${p.id}"
+                      style="padding: 0.25rem 0.65rem; font-size: 0.75rem;"
+                    >
+                      ${this.escapeHtml(p.name)}
+                    </button>
+                  `
+                )
+                .join('')}
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <button type="button" class="btn-secondary" id="btn-move-page-left" ${activePageIndex <= 0 ? 'disabled' : ''} style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Move Page Left">◀</button>
+              <button type="button" class="btn-secondary" id="btn-move-page-right" ${activePageIndex >= pages.length - 1 ? 'disabled' : ''} style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="Move Page Right">▶</button>
+              <button type="button" class="btn-secondary" id="btn-add-page" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">+ Add Page</button>
+              <button type="button" class="btn-secondary" id="btn-delete-page" style="font-size: 0.75rem; padding: 0.25rem 0.6rem; color: var(--status-offline);" title="Delete current page">Delete</button>
+            </div>
           </div>
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <button type="button" class="btn-secondary" id="btn-add-page" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">+ Add Page</button>
-            <button type="button" class="btn-secondary" id="btn-delete-page" style="font-size: 0.75rem; padding: 0.3rem 0.6rem; color: var(--status-offline);" title="Delete current page">Delete Page</button>
-          </div>
+
+          <!-- Active Page Customization Inputs -->
+          ${
+            activePage
+              ? `<div style="display: flex; align-items: center; gap: 0.6rem; border-top: 1px solid var(--border-subtle); padding-top: 0.6rem; flex-wrap: wrap;">
+                  <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Edit Page:</span>
+                  <input 
+                    type="text" 
+                    id="page-name-input" 
+                    class="form-input" 
+                    value="${this.escapeHtml(activePage.name)}" 
+                    placeholder="Page Name" 
+                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; width: 140px; font-weight: 700;" 
+                  />
+                  <input 
+                    type="text" 
+                    id="page-icon-input" 
+                    class="form-input" 
+                    value="${this.escapeHtml(activePage.icon || 'home')}" 
+                    placeholder="Icon (home, film, server)" 
+                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; width: 120px; font-family: var(--font-mono);" 
+                  />
+                  <input 
+                    type="text" 
+                    id="page-desc-input" 
+                    class="form-input" 
+                    value="${this.escapeHtml(activePage.description || '')}" 
+                    placeholder="Page subtitle or description..." 
+                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; flex: 1; min-width: 180px;" 
+                  />
+                </div>`
+              : ''
+          }
         </div>`
       : `<div style="display: flex; justify-content: flex-end; margin-bottom: 0.75rem;">
           <button type="button" class="btn-secondary" id="btn-convert-multipage" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">+ Enable Multi-Page Tabs</button>
@@ -201,6 +245,40 @@ export class ConfigEditor {
           this.renderVisualForm();
         }
       });
+    });
+
+    // Page Name / Icon / Desc inputs
+    const pageNameInput = document.getElementById('page-name-input') as HTMLInputElement | null;
+    const pageIconInput = document.getElementById('page-icon-input') as HTMLInputElement | null;
+    const pageDescInput = document.getElementById('page-desc-input') as HTMLInputElement | null;
+
+    if (activePage) {
+      pageNameInput?.addEventListener('input', () => {
+        if (activePage) activePage.name = pageNameInput.value;
+      });
+      pageIconInput?.addEventListener('input', () => {
+        if (activePage) activePage.icon = pageIconInput.value;
+      });
+      pageDescInput?.addEventListener('input', () => {
+        if (activePage) activePage.description = pageDescInput.value;
+      });
+    }
+
+    // Move page left / right
+    document.getElementById('btn-move-page-left')?.addEventListener('click', () => {
+      if (this.currentConfig?.pages && activePageIndex > 0) {
+        const item = this.currentConfig.pages.splice(activePageIndex, 1)[0];
+        this.currentConfig.pages.splice(activePageIndex - 1, 0, item);
+        this.renderVisualForm();
+      }
+    });
+
+    document.getElementById('btn-move-page-right')?.addEventListener('click', () => {
+      if (this.currentConfig?.pages && activePageIndex < this.currentConfig.pages.length - 1) {
+        const item = this.currentConfig.pages.splice(activePageIndex, 1)[0];
+        this.currentConfig.pages.splice(activePageIndex + 1, 0, item);
+        this.renderVisualForm();
+      }
     });
 
     document.getElementById('btn-add-page')?.addEventListener('click', () => {
@@ -529,6 +607,287 @@ export class ConfigEditor {
     `;
   }
 
+  private renderSettingsView(): void {
+    const container = document.getElementById('settings-content-list');
+    if (!container || !this.currentConfig) return;
+
+    const meta = this.currentConfig.meta;
+
+    container.innerHTML = `
+      <div class="settings-container">
+        
+        <!-- 1. General Dashboard Identity -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">🏠</span>
+            <div>
+              <h4 class="settings-card-title">Dashboard Information</h4>
+              <p class="settings-card-subtitle">General titles, default layout, and header branding</p>
+            </div>
+          </div>
+          <div class="settings-grid-2">
+            <div class="settings-field">
+              <label class="settings-label">Dashboard Title</label>
+              <input type="text" id="set-meta-title" class="form-input" value="${this.escapeHtml(meta.title || 'DashPark')}" />
+              <span class="settings-desc">Primary header title and browser tab label</span>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Subtitle / Description</label>
+              <input type="text" id="set-meta-subtitle" class="form-input" value="${this.escapeHtml(meta.subtitle || '')}" placeholder="Homelab & Server Park" />
+              <span class="settings-desc">Subheading displayed under dashboard title</span>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Default Layout Mode</label>
+              <select id="set-meta-layout" class="form-input">
+                <option value="grid" ${meta.layout === 'grid' ? 'selected' : ''}>Categorized Grid (Standard)</option>
+                <option value="bento" ${meta.layout === 'bento' ? 'selected' : ''}>Bento Grid (Dynamic Tiles)</option>
+                <option value="compact" ${meta.layout === 'compact' ? 'selected' : ''}>Compact List (High Density)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Appearance & Accent Color -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">🎨</span>
+            <div>
+              <h4 class="settings-card-title">Theme & Accent Palette</h4>
+              <p class="settings-card-subtitle">Choose your color palette, dark mode style, and brand accents</p>
+            </div>
+          </div>
+          <div class="settings-grid-2">
+            <div class="settings-field">
+              <label class="settings-label">Theme Preset</label>
+              <select id="set-meta-theme" class="form-input">
+                <option value="dark" ${meta.theme === 'dark' ? 'selected' : ''}>🌙 Dark (Slate Baseline)</option>
+                <option value="nord" ${meta.theme === 'nord' ? 'selected' : ''}>❄️ Nord (Arctic Blue)</option>
+                <option value="dracula" ${meta.theme === 'dracula' ? 'selected' : ''}>🧛 Dracula (Vampire Violet)</option>
+                <option value="catppuccin" ${meta.theme === 'catppuccin' ? 'selected' : ''}>🐱 Catppuccin (Mocha)</option>
+                <option value="cyberpunk" ${meta.theme === 'cyberpunk' ? 'selected' : ''}>⚡ Cyberpunk (High Contrast Neon)</option>
+                <option value="glass" ${meta.theme === 'glass' ? 'selected' : ''}>💎 Glass (Frosted Acrylic)</option>
+                <option value="light" ${meta.theme === 'light' ? 'selected' : ''}>☀️ Light (Clean Daytime)</option>
+              </select>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Accent Color (HEX)</label>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="text" id="set-meta-accent" class="form-input" value="${this.escapeHtml(meta.accentColor || '#6366f1')}" style="width: 110px; font-family: var(--font-mono);" />
+                <div class="color-swatches-row">
+                  <button type="button" class="color-swatch-btn" data-color="#6366f1" style="background: #6366f1;" title="Indigo"></button>
+                  <button type="button" class="color-swatch-btn" data-color="#10b981" style="background: #10b981;" title="Emerald"></button>
+                  <button type="button" class="color-swatch-btn" data-color="#8b5cf6" style="background: #8b5cf6;" title="Violet"></button>
+                  <button type="button" class="color-swatch-btn" data-color="#06b6d4" style="background: #06b6d4;" title="Cyan"></button>
+                  <button type="button" class="color-swatch-btn" data-color="#f59e0b" style="background: #f59e0b;" title="Amber"></button>
+                  <button type="button" class="color-swatch-btn" data-color="#f43f5e" style="background: #f43f5e;" title="Rose"></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Wallpaper Studio & Glassmorphism -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">🖼️</span>
+            <div>
+              <h4 class="settings-card-title">Wallpaper Studio & Live Glassmorphism</h4>
+              <p class="settings-card-subtitle">Set custom background wallpaper image and fine-tune blur and transparency</p>
+            </div>
+          </div>
+          <div class="settings-field">
+            <label class="settings-label">Background Wallpaper URL</label>
+            <input type="text" id="set-meta-bgurl" class="form-input" value="${this.escapeHtml(meta.backgroundUrl || '')}" placeholder="https://example.com/wallpaper.jpg or /local/image.png" />
+            <div style="margin-top: 0.5rem;">
+              <span class="settings-desc">1-Click Wallpaper Presets:</span>
+              <div class="wallpaper-presets-row" style="margin-top: 0.4rem;">
+                <button type="button" class="wallpaper-preset-card" data-bg="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1920&q=80">🌌 Minimal Mesh</button>
+                <button type="button" class="wallpaper-preset-card" data-bg="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1920&q=80">🖥️ Server Rack</button>
+                <button type="button" class="wallpaper-preset-card" data-bg="https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1920&q=80">⚡ Cyber Grid</button>
+                <button type="button" class="wallpaper-preset-card" data-bg="https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1920&q=80">🪐 Deep Space</button>
+                <button type="button" class="wallpaper-preset-card" data-bg="" style="color: var(--status-offline);">✕ Clear Wallpaper</button>
+              </div>
+            </div>
+          </div>
+          <div class="settings-grid-2" style="margin-top: 0.5rem;">
+            <div class="settings-field">
+              <label class="settings-label">Glass Blur: <span id="blur-val-display">${meta.glassBlur ?? 12}px</span></label>
+              <div class="slider-row">
+                <input type="range" id="set-meta-blur" class="range-slider" min="0" max="40" value="${meta.glassBlur ?? 12}" />
+              </div>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Card Opacity: <span id="opacity-val-display">${Math.round((meta.glassOpacity ?? 0.75) * 100)}%</span></label>
+              <div class="slider-row">
+                <input type="range" id="set-meta-opacity" class="range-slider" min="20" max="100" value="${Math.round((meta.glassOpacity ?? 0.75) * 100)}" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Clock & Search Engine -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">⏰</span>
+            <div>
+              <h4 class="settings-card-title">Clock & Search Bar</h4>
+              <p class="settings-card-subtitle">Format the status clock and universal search bar</p>
+            </div>
+          </div>
+          <div class="settings-grid-2">
+            <div class="settings-field">
+              <label class="settings-label">Clock Controls</label>
+              <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem;">
+                  <input type="checkbox" id="set-meta-showclock" ${meta.showClock !== false ? 'checked' : ''} />
+                  Show Clock in Header
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem;">
+                  <input type="checkbox" id="set-meta-showseconds" ${meta.showSeconds !== false ? 'checked' : ''} />
+                  Display Seconds (:SS)
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem;">
+                  <input type="checkbox" id="set-meta-showdate" ${meta.showDate !== false ? 'checked' : ''} />
+                  Display Date (Day, Month)
+                </label>
+              </div>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Search Provider</label>
+              <select id="set-meta-searchprovider" class="form-input">
+                <option value="duckduckgo" ${(meta.searchEngine?.provider || 'duckduckgo') === 'duckduckgo' ? 'selected' : ''}>DuckDuckGo</option>
+                <option value="google" ${(meta.searchEngine?.provider || 'duckduckgo') === 'google' ? 'selected' : ''}>Google</option>
+                <option value="brave" ${(meta.searchEngine?.provider || 'duckduckgo') === 'brave' ? 'selected' : ''}>Brave Search</option>
+                <option value="searxng" ${(meta.searchEngine?.provider || 'duckduckgo') === 'searxng' ? 'selected' : ''}>SearXNG (Self-Hosted)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Reset & Danger Zone -->
+        <div class="settings-card" style="border-color: rgba(239, 68, 68, 0.3);">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">🔄</span>
+            <div>
+              <h4 class="settings-card-title" style="color: var(--status-offline);">Reset & Restore Sample Dashboard</h4>
+              <p class="settings-card-subtitle">Restore DashPark to the default dual-page homelab showcase</p>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+            <p style="font-size: 0.8125rem; color: var(--text-secondary); max-width: 500px;">
+              Overwrites active configuration with the factory <code>dashpark.sample.yaml</code> example. A backup will be preserved at <code>config/dashpark.yaml.bak</code>.
+            </p>
+            <button type="button" class="btn-secondary" id="btn-reset-to-sample" style="color: var(--status-offline); border-color: rgba(239, 68, 68, 0.4); font-weight: 700;">
+              Reset to Example Dashboard
+            </button>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    this.attachSettingsEventListeners();
+  }
+
+  private attachSettingsEventListeners(): void {
+    if (!this.currentConfig) return;
+    const meta = this.currentConfig.meta;
+
+    // Title & Subtitle
+    document.getElementById('set-meta-title')?.addEventListener('input', (e) => {
+      meta.title = (e.target as HTMLInputElement).value;
+    });
+    document.getElementById('set-meta-subtitle')?.addEventListener('input', (e) => {
+      meta.subtitle = (e.target as HTMLInputElement).value;
+    });
+    document.getElementById('set-meta-layout')?.addEventListener('change', (e) => {
+      meta.layout = (e.target as HTMLSelectElement).value as LayoutMode;
+    });
+
+    // Theme & Accent
+    document.getElementById('set-meta-theme')?.addEventListener('change', (e) => {
+      meta.theme = (e.target as HTMLSelectElement).value as ThemeName;
+    });
+    const accentInput = document.getElementById('set-meta-accent') as HTMLInputElement | null;
+    accentInput?.addEventListener('input', () => {
+      meta.accentColor = accentInput.value;
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.color-swatch-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const color = btn.getAttribute('data-color');
+        if (color && accentInput) {
+          meta.accentColor = color;
+          accentInput.value = color;
+        }
+      });
+    });
+
+    // Background & Glassmorphism
+    const bgUrlInput = document.getElementById('set-meta-bgurl') as HTMLInputElement | null;
+    bgUrlInput?.addEventListener('input', () => {
+      meta.backgroundUrl = bgUrlInput.value;
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.wallpaper-preset-card').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const bg = btn.getAttribute('data-bg') || '';
+        meta.backgroundUrl = bg;
+        if (bgUrlInput) bgUrlInput.value = bg;
+      });
+    });
+
+    const blurSlider = document.getElementById('set-meta-blur') as HTMLInputElement | null;
+    const blurDisplay = document.getElementById('blur-val-display');
+    blurSlider?.addEventListener('input', () => {
+      const val = parseInt(blurSlider.value, 10);
+      meta.glassBlur = val;
+      if (blurDisplay) blurDisplay.textContent = `${val}px`;
+    });
+
+    const opacitySlider = document.getElementById('set-meta-opacity') as HTMLInputElement | null;
+    const opacityDisplay = document.getElementById('opacity-val-display');
+    opacitySlider?.addEventListener('input', () => {
+      const val = parseInt(opacitySlider.value, 10);
+      meta.glassOpacity = val / 100;
+      if (opacityDisplay) opacityDisplay.textContent = `${val}%`;
+    });
+
+    // Clock & Search
+    document.getElementById('set-meta-showclock')?.addEventListener('change', (e) => {
+      meta.showClock = (e.target as HTMLInputElement).checked;
+    });
+    document.getElementById('set-meta-showseconds')?.addEventListener('change', (e) => {
+      meta.showSeconds = (e.target as HTMLInputElement).checked;
+    });
+    document.getElementById('set-meta-showdate')?.addEventListener('change', (e) => {
+      meta.showDate = (e.target as HTMLInputElement).checked;
+    });
+    document.getElementById('set-meta-searchprovider')?.addEventListener('change', (e) => {
+      if (!meta.searchEngine) meta.searchEngine = { enabled: true };
+      meta.searchEngine.provider = (e.target as HTMLSelectElement).value as any;
+    });
+
+    // Reset to Sample
+    document.getElementById('btn-reset-to-sample')?.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to reset your dashboard back to the factory example? Your current layout will be saved to dashpark.yaml.bak.')) {
+        try {
+          const res = await fetch('/api/v1/config/reset', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            this.showToast('Dashboard reset to example configuration!', 'success');
+            this.close();
+            this.onSavedCallback();
+          } else {
+            this.showToast(data.message || 'Reset failed', 'error');
+          }
+        } catch {
+          this.showToast('Network error while resetting configuration', 'error');
+        }
+      }
+    });
+  }
+
   private renderGuidesView(): void {
     const container = document.getElementById('guides-content-list');
     if (!container) return;
@@ -725,25 +1084,44 @@ export class ConfigEditor {
       });
     });
 
-    // Service Inputs (listen to input & change)
-    document.querySelectorAll<HTMLInputElement>('.svc-name-input').forEach((input) => {
+    // Service Inputs & Smart URL Auto-Detection
+    document.querySelectorAll<HTMLInputElement>('.svc-url-input').forEach((input) => {
       const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
-        if (activeCategories[catIdx]?.services[svcIdx]) {
-          activeCategories[catIdx].services[svcIdx].name = input.value;
+        const svc = activeCategories[catIdx]?.services[svcIdx];
+        if (svc) {
+          svc.url = input.value;
+
+          // ⚡ Homelab Smart URL Auto-Detection
+          const detected = detectServiceFromUrl(input.value);
+          if (detected && (!svc.name || svc.name.startsWith('svc_') || svc.name.startsWith('New Service') || svc.name === 'Link')) {
+            svc.name = detected.name;
+            svc.icon = detected.icon;
+            svc.description = detected.description;
+            svc.pingUrl = detected.defaultPingUrl;
+            svc.tags = [...detected.tags];
+            if (detected.widget) {
+              svc.widget = JSON.parse(JSON.stringify(detected.widget));
+            }
+            if (detected.shortcuts) {
+              svc.shortcuts = JSON.parse(JSON.stringify(detected.shortcuts));
+            }
+            this.showToast(`⚡ Auto-detected ${detected.name}! Configured telemetry & shortcuts.`, 'success');
+            this.renderVisualForm();
+          }
         }
       };
       input.addEventListener('input', update);
       input.addEventListener('change', update);
     });
 
-    document.querySelectorAll<HTMLInputElement>('.svc-url-input').forEach((input) => {
+    document.querySelectorAll<HTMLInputElement>('.svc-name-input').forEach((input) => {
       const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         if (activeCategories[catIdx]?.services[svcIdx]) {
-          activeCategories[catIdx].services[svcIdx].url = input.value;
+          activeCategories[catIdx].services[svcIdx].name = input.value;
         }
       };
       input.addEventListener('input', update);
@@ -1013,7 +1391,7 @@ export class ConfigEditor {
     }
 
     let payloadContent = this.rawYaml;
-    if (this.activeTab === 'visual' && this.currentConfig) {
+    if ((this.activeTab === 'visual' || this.activeTab === 'settings') && this.currentConfig) {
       const configToSerialize = JSON.parse(JSON.stringify(this.currentConfig));
       if (configToSerialize.pages && configToSerialize.pages.length > 0) {
         delete configToSerialize.categories;

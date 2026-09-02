@@ -390,3 +390,60 @@ export const HOMELAB_PRESETS: ServicePreset[] = [
     },
   },
 ];
+
+/**
+ * Intelligent Homelab URL Matcher:
+ * Automatically matches IP:port, domain names, or endpoint paths to known homelab presets.
+ */
+export function detectServiceFromUrl(url: string): ServicePreset | null {
+  if (!url || typeof url !== 'string') return null;
+  const raw = url.toLowerCase().trim();
+
+  // 1. Check direct ID/name matches in hostname or URL
+  for (const preset of HOMELAB_PRESETS) {
+    if (raw.includes(preset.id) || raw.includes(preset.name.toLowerCase())) {
+      return preset;
+    }
+  }
+
+  // 2. Check known standard homelab port signatures
+  const portMatch = raw.match(/:(\d+)/);
+  if (portMatch) {
+    const port = portMatch[1];
+    switch (port) {
+      case '8096':
+        return raw.includes('jellyfin')
+          ? HOMELAB_PRESETS.find((p) => p.id === 'jellyfin') || null
+          : HOMELAB_PRESETS.find((p) => p.id === 'emby') || null;
+      case '32400':
+        return HOMELAB_PRESETS.find((p) => p.id === 'plex') || null;
+      case '8989':
+        return HOMELAB_PRESETS.find((p) => p.id === 'sonarr') || null;
+      case '7878':
+        return HOMELAB_PRESETS.find((p) => p.id === 'radarr') || null;
+      case '8123':
+        return HOMELAB_PRESETS.find((p) => p.id === 'homeassistant') || null;
+      case '8006':
+        return HOMELAB_PRESETS.find((p) => p.id === 'proxmox') || null;
+      case '3001':
+        return HOMELAB_PRESETS.find((p) => p.id === 'uptimekuma') || null;
+      case '9443':
+      case '9000':
+        return HOMELAB_PRESETS.find((p) => p.id === 'portainer') || null;
+      case '5055':
+        return HOMELAB_PRESETS.find((p) => p.id === 'overseerr') || null;
+      case '1880':
+        return HOMELAB_PRESETS.find((p) => p.id === 'nodered') || null;
+    }
+  }
+
+  // 3. Pathname keywords
+  if (raw.includes('/admin') || raw.includes('pi.hole')) {
+    return HOMELAB_PRESETS.find((p) => p.id === 'pihole') || null;
+  }
+  if (raw.includes('/control/')) {
+    return HOMELAB_PRESETS.find((p) => p.id === 'adguard') || null;
+  }
+
+  return null;
+}

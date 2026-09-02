@@ -85,5 +85,50 @@ export function createConfigRoutes(configLoader: ConfigLoader): FastifyPluginAsy
         }
       }
     );
+
+    // Reset configuration endpoint: restores active config to default sample
+    fastify.post('/api/v1/config/reset', async (_req, reply) => {
+      const configDir = path.resolve(process.cwd(), 'config');
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+
+      const samplePath = path.join(configDir, 'dashpark.sample.yaml');
+      const targetPath = path.join(configDir, 'dashpark.yaml');
+      const backupPath = `${targetPath}.bak`;
+
+      try {
+        if (fs.existsSync(targetPath)) {
+          try {
+            fs.copyFileSync(targetPath, backupPath);
+          } catch {
+            // Ignore backup error
+          }
+        }
+
+        if (fs.existsSync(samplePath)) {
+          fs.copyFileSync(samplePath, targetPath);
+        } else {
+          const { DEFAULT_SAMPLE_YAML } = await import('../config/default-config.js');
+          fs.writeFileSync(targetPath, DEFAULT_SAMPLE_YAML, 'utf-8');
+        }
+
+        const updated = configLoader.load();
+        if (updated.config) {
+          globalHealthChecker.updateConfig(updated.config);
+        }
+
+        return reply.status(200).send({
+          success: true,
+          message: 'Dashboard reset to default showcase sample',
+          config: updated.config,
+        });
+      } catch (err: unknown) {
+        return reply.status(500).send({
+          success: false,
+          message: `Failed to reset config: ${(err as Error)?.message || 'Disk I/O error'}`,
+        });
+      }
+    });
   };
 }

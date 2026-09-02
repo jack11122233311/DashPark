@@ -2,7 +2,7 @@
  * Shared Type Definitions for DashPark v0.0.1
  */
 
-export type ThemeName = 'dark' | 'light' | 'nord' | 'dracula' | 'cyberpunk' | 'glass';
+export type ThemeName = 'dark' | 'light' | 'nord' | 'dracula' | 'cyberpunk' | 'catppuccin' | 'glass';
 export type LayoutMode = 'grid' | 'bento' | 'compact';
 export type ServiceTarget = '_blank' | '_self';
 export type HealthStatus = 'online' | 'degraded' | 'offline' | 'disabled' | 'pending';
@@ -13,12 +13,17 @@ export interface DashboardMeta {
   logo?: string;
   theme: ThemeName;
   accentColor?: string;
+  backgroundUrl?: string;
+  glassBlur?: number;
+  glassOpacity?: number;
   layout: LayoutMode;
   showClock: boolean;
   clockFormat?: '12h' | '24h';
+  showSeconds?: boolean;
+  showDate?: boolean;
   searchEngine?: {
     enabled: boolean;
-    provider?: 'duckduckgo' | 'google' | 'brave' | 'custom';
+    provider?: 'duckduckgo' | 'google' | 'brave' | 'searxng' | 'custom';
     customUrl?: string;
   };
 }

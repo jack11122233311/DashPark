@@ -167,6 +167,7 @@
             <h2 id="editor-title" class="editor-title">Dashboard Configuration</h2>
             <div class="editor-tabs" role="tablist">
               <button type="button" class="editor-tab-btn active" data-tab="visual" role="tab">Visual Editor</button>
+              <button type="button" class="editor-tab-btn" data-tab="settings" role="tab">⚙️ Settings</button>
               <button type="button" class="editor-tab-btn" data-tab="yaml" role="tab">Raw YAML Code</button>
               <button type="button" class="editor-tab-btn" data-tab="guides" role="tab">📖 Service Guides</button>
             </div>
@@ -179,6 +180,11 @@
           <!-- Visual Tab Pane -->
           <div id="editor-visual-pane" class="editor-pane active">
             <div id="visual-categories-list"></div>
+          </div>
+
+          <!-- Settings Tab Pane -->
+          <div id="editor-settings-pane" class="editor-pane">
+            <div id="settings-content-list"></div>
           </div>
 
           <!-- YAML Tab Pane -->

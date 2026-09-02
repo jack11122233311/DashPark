@@ -222,20 +222,30 @@ class DashParkClient {
 
     const update = () => {
       const now = new Date();
+      const meta = this.configResponse?.config?.meta;
+      const is12h = meta?.clockFormat === '12h';
+      const showSeconds = meta?.showSeconds !== false;
+      const showDate = meta?.showDate !== false;
+
       if (clockEl) {
         clockEl.textContent = now.toLocaleTimeString('en-US', {
-          hour12: false,
+          hour12: is12h,
           hour: '2-digit',
           minute: '2-digit',
-          second: '2-digit',
+          second: showSeconds ? '2-digit' : undefined,
         });
       }
       if (dateEl) {
-        dateEl.textContent = now.toLocaleDateString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-        });
+        if (showDate) {
+          dateEl.style.display = 'block';
+          dateEl.textContent = now.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+          });
+        } else {
+          dateEl.style.display = 'none';
+        }
       }
     };
     update();
@@ -249,6 +259,31 @@ class DashParkClient {
     searchInput.addEventListener('input', (e) => {
       this.searchTerm = (e.target as HTMLInputElement).value.toLowerCase().trim();
       this.filterServices();
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const query = searchInput.value.trim();
+        if (!query) return;
+
+        const meta = this.configResponse?.config?.meta;
+        const provider = meta?.searchEngine?.provider || 'duckduckgo';
+        let searchUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
+
+        if (provider === 'google') {
+          searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+        } else if (provider === 'brave') {
+          searchUrl = `https://search.brave.com/search?q=${encodeURIComponent(query)}`;
+        } else if (provider === 'searxng') {
+          searchUrl = meta?.searchEngine?.customUrl
+            ? `${meta.searchEngine.customUrl.replace('%s', encodeURIComponent(query))}`
+            : `https://searx.be/search?q=${encodeURIComponent(query)}`;
+        } else if (provider === 'custom' && meta?.searchEngine?.customUrl) {
+          searchUrl = meta.searchEngine.customUrl.replace('%s', encodeURIComponent(query));
+        }
+
+        window.open(searchUrl, '_blank');
+      }
     });
   }
 
@@ -521,6 +556,37 @@ class DashParkClient {
 
     if (meta.accentColor) {
       document.documentElement.style.setProperty('--accent-primary', meta.accentColor);
+    }
+
+    if (meta.theme) {
+      this.applyTheme(meta.theme);
+    }
+
+    if (meta.layout && ['grid', 'bento', 'compact'].includes(meta.layout)) {
+      this.setLayout(meta.layout);
+    }
+
+    // Wallpaper & Live Glassmorphism
+    if (meta.backgroundUrl && meta.backgroundUrl.trim().length > 0) {
+      document.body.classList.add('has-custom-wallpaper');
+      document.documentElement.style.setProperty('--bg-custom-image', `url("${meta.backgroundUrl}")`);
+      document.documentElement.style.setProperty('--glass-blur', `${meta.glassBlur ?? 12}px`);
+      document.documentElement.style.setProperty('--glass-opacity', String(meta.glassOpacity ?? 0.75));
+    } else {
+      document.body.classList.remove('has-custom-wallpaper');
+      document.documentElement.style.removeProperty('--bg-custom-image');
+    }
+
+    // Search Engine Configuration
+    const searchContainer = document.getElementById('search-container');
+    if (searchContainer) {
+      searchContainer.style.display = meta.searchEngine?.enabled === false ? 'none' : 'flex';
+    }
+
+    // Clock Visibility
+    const clockContainer = document.getElementById('clock-container');
+    if (clockContainer) {
+      clockContainer.style.display = meta.showClock === false ? 'none' : 'flex';
     }
   }
 

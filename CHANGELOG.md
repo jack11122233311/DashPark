@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-02
+
+### Added
+- **Default 2-Page Homelab Architecture**: Factory sample and fallback configurations now default to 2 curated showcase pages:
+  - **Overview & Hub**: Security, DNS & WAN Monitoring telemetry.
+  - **Media & Compute**: Streaming Servers, Hypervisors, Storage Pools & Smart Home.
+- **Rich Page Customization & Reordering**:
+  - In-Editor controls for Page Name, Page Icon, and Page Subtitle/Description.
+  - `◀ Move Left` and `▶ Move Right` controls to dynamically reorder dashboard pages.
+- **Dedicated Visual Settings Hub (`⚙️ Settings` Tab)**:
+  - Comprehensive form controls for Dashboard Title, Subtitle, Theme swatches, Accent Color Palette Picker (Indigo, Emerald, Violet, Amber, Cyan, Rose), Clock configuration (12h/24h, Seconds toggle, Date toggle), Search Engine Provider (DuckDuckGo, Google, Brave, SearXNG), and Default Layout.
+  - **Reset to Example Dashboard**: 1-click factory restore button via `/api/v1/config/reset`.
+- **Advancement 1: Homelab Smart URL Auto-Detector (`Quick Add`)**:
+  - Pasting any IP, port, or domain into the Service URL field instantly detects services (Emby, Jellyfin, Plex, Pi-hole, AdGuard, Sonarr, Radarr, Proxmox, Portainer, Home Assistant, Uptime Kuma, Node-RED, etc.) and auto-configures names, SVG icons, ping URLs, telemetry widgets, and action shortcuts.
+- **Advancement 2: Homelab Wallpaper Studio & Live Glassmorphism Engine**:
+  - Support for custom background image wallpapers (`meta.backgroundUrl`) and 1-click curated homelab wallpaper presets (Minimal Dark, Cyber Grid, Server Rack, Deep Space).
+  - Real-time sliders for live **Glass Blur (`backdrop-filter`)** and **Card Opacity / Transparency**.
+- **Automated Tests**:
+  - Added `tests/smart-detect.test.ts` (7 URL pattern matching tests).
+  - Added `tests/settings-reset.test.ts` (Settings & Glassmorphism metadata validation).
+  - Expanded total test suite to **45 passing tests across 13 test files**.
+
 ## [0.3.1] - 2026-09-02
 
 ### Fixed
