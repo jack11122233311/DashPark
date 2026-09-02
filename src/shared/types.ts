@@ -45,14 +45,22 @@ export interface DashboardMeta {
   clockFormat?: '12h' | '24h';
   showSeconds?: boolean;
   showDate?: boolean;
-  searchEngine?: {
-    enabled: boolean;
-    provider?: 'duckduckgo' | 'google' | 'brave' | 'searxng' | 'custom';
-    customUrl?: string;
-  };
+  searchEngine?: SearchEngineConfig;
   weather?: WeatherConfig;
   auth?: AuthConfig;
   alerts?: AlertsConfig;
+}
+
+export type SearchTargetMode = 'new_tab' | 'same_tab' | 'new_window' | 'target_screen';
+
+export interface SearchEngineConfig {
+  enabled: boolean;
+  provider?: 'duckduckgo' | 'google' | 'brave' | 'searxng' | 'custom';
+  customUrl?: string;
+  target?: SearchTargetMode;
+  targetScreen?: number;
+  windowWidth?: number;
+  windowHeight?: number;
 }
 
 export interface DockerContainerInfo {

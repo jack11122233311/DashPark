@@ -46,7 +46,19 @@ export const DashboardMetaSchema = z.object({
     enabled: z.boolean().default(true),
     provider: z.enum(['duckduckgo', 'google', 'brave', 'searxng', 'custom']).default('duckduckgo'),
     customUrl: z.string().optional().default(''),
-  }).optional().default({ enabled: true, provider: 'duckduckgo', customUrl: '' }),
+    target: z.enum(['new_tab', 'same_tab', 'new_window', 'target_screen']).default('new_tab'),
+    targetScreen: z.number().int().min(0).max(4).optional().default(0),
+    windowWidth: z.number().int().min(400).max(3840).optional().default(1400),
+    windowHeight: z.number().int().min(300).max(2160).optional().default(900),
+  }).optional().default({
+    enabled: true,
+    provider: 'duckduckgo',
+    customUrl: '',
+    target: 'new_tab',
+    targetScreen: 0,
+    windowWidth: 1400,
+    windowHeight: 900,
+  }),
   weather: WeatherConfigSchema,
   auth: AuthConfigSchema,
   alerts: AlertsConfigSchema,
@@ -64,7 +76,15 @@ export const DashboardMetaSchema = z.object({
   clockFormat: '24h',
   showSeconds: true,
   showDate: true,
-  searchEngine: { enabled: true, provider: 'duckduckgo', customUrl: '' },
+  searchEngine: {
+    enabled: true,
+    provider: 'duckduckgo',
+    customUrl: '',
+    target: 'new_tab',
+    targetScreen: 0,
+    windowWidth: 1400,
+    windowHeight: 900,
+  },
 });
 
 export const ServiceShortcutSchema = z.object({

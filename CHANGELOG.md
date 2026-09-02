@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-09-03
+
+### Added
+- **Advanced Search Target & Multi-Screen Window Management (`SearchEngineBar.ts`)**:
+  - Configurable search open destination:
+    - `New Tab` (`_blank` with `noopener,noreferrer`)
+    - `Current Page` (`_self` / `window.location.assign`)
+    - `New Window` (Centered popup window with custom width and height)
+    - `Target External Monitor` (Multi-Screen Window Placement API targeting with cross-browser virtual monitor offset calculations)
+  - Popup blocker safeguard: Non-intrusive fallback with toast notification if popups are restricted.
+- **Settings Hub Search & Display Panel (`ConfigEditor.ts`)**:
+  - Interactive controls in Panel 10 ("Clock & Search Bar") for Open Search In target, target monitor/display (Display 1, Display 2, Display 3), and popup window dimensions.
+  - Bidirectional synchronization between visual form, `localStorage`, and `dashpark.yaml`.
+- **Command Palette Web Search Integration (`CommandPalette.ts`)**:
+  - Directly execute web searches from `Ctrl+K` command palette using the configured search target and display monitor options.
+
+### Changed & Polished
+- **Symmetrical Centering & Zero-Wrap Visual Overhaul (`style.css`)**:
+  - Perfectly centered header structure (`1fr auto 1fr`) with balanced search box container.
+  - Non-wrapping search engine chips strip with edge-fade mask and smooth horizontal touch scroll.
+  - Zero-wrap guarantees for category headers, health rollup status pills (`🟢 3/3 Online`), latency badges, and compact table cells.
+  - Truncation with ellipsis on service titles and descriptions preventing layout shifts and broken aspect ratios.
+
 ## [0.9.0] - 2026-09-02
 
 ### Added

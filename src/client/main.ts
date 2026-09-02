@@ -122,7 +122,16 @@ export class DashParkClient {
     this.toastManager = new ToastManager();
     this.spatialNavigator = new SpatialNavigator();
     this.widgetPoller = new WidgetPoller();
-    this.searchEngineBar = new SearchEngineBar();
+    this.searchEngineBar = new SearchEngineBar({
+      onPopupBlocked: (url) => {
+        window.open(url, '_blank');
+        this.toastManager?.show({
+          title: 'Popup Blocked',
+          message: 'Opened in a new tab. Please allow popups for window/display placement.',
+          type: 'degraded',
+        });
+      },
+    });
     this.hostStatsCard = new HostStatsCard();
     this.hostStatsCard.init();
     this.rssWidget = new RssWidget();
@@ -241,6 +250,7 @@ export class DashParkClient {
         this.pageRouter?.setActivePageId(pageId);
         this.renderContent();
       },
+      onSearchWeb: (q) => this.searchEngineBar?.executeSearch(q),
       onToggleBentoCustomize: async () => {
         const ok = await this.challengePin();
         if (!ok) return;
@@ -767,6 +777,15 @@ export class DashParkClient {
     const searchContainer = document.getElementById('search-container');
     if (searchContainer) {
       searchContainer.style.display = meta.searchEngine?.enabled === false ? 'none' : 'flex';
+    }
+
+    if (meta.searchEngine) {
+      this.searchEngineBar?.setTargetOptions({
+        target: meta.searchEngine.target,
+        targetScreen: meta.searchEngine.targetScreen,
+        windowWidth: meta.searchEngine.windowWidth,
+        windowHeight: meta.searchEngine.windowHeight,
+      });
     }
 
     // Clock Visibility

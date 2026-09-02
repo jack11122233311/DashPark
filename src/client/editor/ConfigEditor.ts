@@ -953,7 +953,7 @@ export class ConfigEditor {
             <span style="font-size: 1.25rem;">⏰</span>
             <div>
               <h4 class="settings-card-title">Clock & Search Bar</h4>
-              <p class="settings-card-subtitle">Format the status clock and universal search bar</p>
+              <p class="settings-card-subtitle">Format the status clock, search target window, and multi-display monitor options</p>
             </div>
           </div>
           <div class="settings-grid-2">
@@ -982,6 +982,33 @@ export class ConfigEditor {
                 <option value="brave" ${(meta.searchEngine?.provider || 'duckduckgo') === 'brave' ? 'selected' : ''}>Brave Search</option>
                 <option value="searxng" ${(meta.searchEngine?.provider || 'duckduckgo') === 'searxng' ? 'selected' : ''}>SearXNG (Self-Hosted)</option>
               </select>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Open Search Results In</label>
+              <select id="set-meta-searchtarget" class="form-input">
+                <option value="new_tab" ${(meta.searchEngine?.target || 'new_tab') === 'new_tab' ? 'selected' : ''}>New Tab (_blank)</option>
+                <option value="same_tab" ${(meta.searchEngine?.target || 'new_tab') === 'same_tab' ? 'selected' : ''}>Current Page (_self)</option>
+                <option value="new_window" ${(meta.searchEngine?.target || 'new_tab') === 'new_window' ? 'selected' : ''}>New Window (Centered Popup)</option>
+                <option value="target_screen" ${(meta.searchEngine?.target || 'new_tab') === 'target_screen' ? 'selected' : ''}>Target External Monitor (Multi-Screen)</option>
+              </select>
+            </div>
+            <div class="settings-field" id="field-search-screen" style="display: ${(meta.searchEngine?.target === 'target_screen') ? 'block' : 'none'};">
+              <label class="settings-label">Target Monitor / Display</label>
+              <select id="set-meta-searchscreen" class="form-input">
+                <option value="0" ${(meta.searchEngine?.targetScreen || 0) === 0 ? 'selected' : ''}>Display 1 (Primary / Default)</option>
+                <option value="1" ${(meta.searchEngine?.targetScreen || 0) === 1 ? 'selected' : ''}>Display 2 (Secondary Monitor)</option>
+                <option value="2" ${(meta.searchEngine?.targetScreen || 0) === 2 ? 'selected' : ''}>Display 3 (Tertiary Monitor)</option>
+              </select>
+            </div>
+            <div class="settings-field" id="field-search-winsize" style="display: ${(meta.searchEngine?.target === 'new_window' || meta.searchEngine?.target === 'target_screen') ? 'flex' : 'none'}; gap: 0.5rem;">
+              <div style="flex: 1;">
+                <label class="settings-label">Window Width (px)</label>
+                <input type="number" id="set-meta-searchwidth" class="form-input" min="400" max="3840" value="${meta.searchEngine?.windowWidth || 1400}" />
+              </div>
+              <div style="flex: 1;">
+                <label class="settings-label">Window Height (px)</label>
+                <input type="number" id="set-meta-searchheight" class="form-input" min="300" max="2160" value="${meta.searchEngine?.windowHeight || 900}" />
+              </div>
             </div>
           </div>
         </div>
@@ -1313,6 +1340,50 @@ export class ConfigEditor {
     document.getElementById('set-meta-searchprovider')?.addEventListener('change', (e) => {
       if (!meta.searchEngine) meta.searchEngine = { enabled: true };
       meta.searchEngine.provider = (e.target as HTMLSelectElement).value as any;
+    });
+    document.getElementById('set-meta-searchtarget')?.addEventListener('change', (e) => {
+      if (!meta.searchEngine) meta.searchEngine = { enabled: true };
+      const val = (e.target as HTMLSelectElement).value as any;
+      meta.searchEngine.target = val;
+      try {
+        localStorage.setItem('dashpark_search_target', val);
+      } catch {
+        // Ignore
+      }
+      const screenField = document.getElementById('field-search-screen');
+      const winSizeField = document.getElementById('field-search-winsize');
+      if (screenField) screenField.style.display = val === 'target_screen' ? 'block' : 'none';
+      if (winSizeField) winSizeField.style.display = (val === 'new_window' || val === 'target_screen') ? 'flex' : 'none';
+    });
+    document.getElementById('set-meta-searchscreen')?.addEventListener('change', (e) => {
+      if (!meta.searchEngine) meta.searchEngine = { enabled: true };
+      const idx = parseInt((e.target as HTMLSelectElement).value, 10) || 0;
+      meta.searchEngine.targetScreen = idx;
+      try {
+        localStorage.setItem('dashpark_search_screen_index', String(idx));
+      } catch {
+        // Ignore
+      }
+    });
+    document.getElementById('set-meta-searchwidth')?.addEventListener('input', (e) => {
+      if (!meta.searchEngine) meta.searchEngine = { enabled: true };
+      const w = parseInt((e.target as HTMLInputElement).value, 10) || 1400;
+      meta.searchEngine.windowWidth = w;
+      try {
+        localStorage.setItem('dashpark_search_win_width', String(w));
+      } catch {
+        // Ignore
+      }
+    });
+    document.getElementById('set-meta-searchheight')?.addEventListener('input', (e) => {
+      if (!meta.searchEngine) meta.searchEngine = { enabled: true };
+      const h = parseInt((e.target as HTMLInputElement).value, 10) || 900;
+      meta.searchEngine.windowHeight = h;
+      try {
+        localStorage.setItem('dashpark_search_win_height', String(h));
+      } catch {
+        // Ignore
+      }
     });
 
     // Reset to Sample

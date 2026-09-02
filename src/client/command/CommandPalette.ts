@@ -20,6 +20,7 @@ export interface CommandPaletteOptions {
   onQuickAdd?: () => void;
   onToggleKiosk?: () => void;
   onOpenCheatsheet?: () => void;
+  onSearchWeb?: (query: string) => void;
 }
 
 export class CommandPalette {
@@ -248,12 +249,26 @@ export class CommandPalette {
     if (!q) {
       this.filteredItems = this.items.slice(0, 30);
     } else {
-      this.filteredItems = this.items.filter((item) => {
+      const matches = this.items.filter((item) => {
         if (item.title.toLowerCase().includes(q)) return true;
         if (item.subtitle && item.subtitle.toLowerCase().includes(q)) return true;
         if (item.keywords && item.keywords.some((k) => k.includes(q))) return true;
         return false;
       });
+
+      if (this.options.onSearchWeb && query.trim().length > 0) {
+        matches.push({
+          id: 'web-search-query',
+          title: `🔍 Search the Web for "${query.trim()}"`,
+          subtitle: 'Execute web search with your configured search engine and display target',
+          category: 'Actions',
+          icon: 'search',
+          keywords: ['search', 'web', 'google', 'duckduckgo', q],
+          action: () => this.options.onSearchWeb?.(query.trim()),
+        });
+      }
+
+      this.filteredItems = matches;
     }
 
     this.selectedIndex = 0;

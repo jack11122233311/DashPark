@@ -104,4 +104,37 @@ categories:
     expect(result.config?.meta.theme).toBe('nord');
     expect(result.config?.categories[0].services[0].name).toBe('OPNsense');
   });
+
+  it('should parse and preserve searchEngine target and multi-screen display options', () => {
+    const yaml = `
+version: "0.10.0"
+meta:
+  title: "Multi-Screen Dashboard"
+  theme: "dark"
+  layout: "grid"
+  showClock: true
+  searchEngine:
+    enabled: true
+    provider: "google"
+    target: "target_screen"
+    targetScreen: 2
+    windowWidth: 1600
+    windowHeight: 1000
+categories:
+  - id: "apps"
+    name: "Apps"
+    services:
+      - id: "s1"
+        name: "Dashboard"
+        url: "http://192.168.1.10:8080"
+`;
+
+    const result = parseConfig(yaml);
+    expect(result.valid).toBe(true);
+    expect(result.config?.meta.searchEngine?.target).toBe('target_screen');
+    expect(result.config?.meta.searchEngine?.targetScreen).toBe(2);
+    expect(result.config?.meta.searchEngine?.windowWidth).toBe(1600);
+    expect(result.config?.meta.searchEngine?.windowHeight).toBe(1000);
+  });
 });
+
