@@ -31,4 +31,36 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
       timestamp: new Date().toISOString(),
     });
   });
+
+  // Public sanitized status endpoint
+  fastify.get('/api/v1/status/public', async () => {
+    const statuses = globalHealthChecker.getAllStatuses();
+    const entries = Object.entries(statuses);
+    const total = entries.length;
+    const online = entries.filter(([_, s]) => s.status === 'online').length;
+    const degraded = entries.filter(([_, s]) => s.status === 'degraded').length;
+    const offline = entries.filter(([_, s]) => s.status === 'offline').length;
+
+    const slaPercentage = total > 0 ? Math.round(((online + degraded * 0.5) / total) * 1000) / 10 : 100;
+    const overall = offline > 0 ? (offline === total ? 'major_outage' : 'partial_outage') : degraded > 0 ? 'degraded' : 'operational';
+
+    const sanitizedServices = entries.map(([id, s]) => ({
+      id,
+      status: s.status,
+      latencyMs: s.latencyMs,
+      statusCode: s.statusCode,
+      checkedAt: s.lastCheckedAt,
+    }));
+
+    return {
+      systemStatus: overall,
+      slaPercentage,
+      totalServices: total,
+      onlineServices: online,
+      degradedServices: degraded,
+      offlineServices: offline,
+      services: sanitizedServices,
+      timestamp: new Date().toISOString(),
+    };
+  });
 };

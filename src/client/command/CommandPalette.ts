@@ -17,6 +17,9 @@ export interface CommandPaletteOptions {
   onOpenSettings: () => void;
   onPageSelect: (pageId: string) => void;
   onToggleBentoCustomize: () => void;
+  onQuickAdd?: () => void;
+  onToggleKiosk?: () => void;
+  onOpenCheatsheet?: () => void;
 }
 
 export class CommandPalette {
@@ -170,6 +173,33 @@ export class CommandPalette {
 
     // 5. System Actions
     items.push(
+      {
+        id: 'act-quickadd',
+        title: '➕ Quick Add Service',
+        subtitle: 'Fast URL & IP port scanner to add new homelab service',
+        category: 'Actions',
+        icon: 'plus',
+        keywords: ['add', 'service', 'create', 'new', 'port', 'ip'],
+        action: () => this.options.onQuickAdd?.(),
+      },
+      {
+        id: 'act-kiosk',
+        title: '📺 Toggle Kiosk Wallboard Mode',
+        subtitle: 'Auto-rotating slideshow across dashboard pages with timer',
+        category: 'Actions',
+        icon: 'play',
+        keywords: ['kiosk', 'slideshow', 'wallboard', 'auto', 'rotate', 'display'],
+        action: () => this.options.onToggleKiosk?.(),
+      },
+      {
+        id: 'act-cheatsheet',
+        title: '⌨️ Keyboard Navigation Cheatsheet',
+        subtitle: 'View all shortcuts for spatial navigation, quick actions, and search',
+        category: 'Actions',
+        icon: 'help-circle',
+        keywords: ['keyboard', 'shortcuts', 'cheatsheet', 'vim', 'hotkeys', '?'],
+        action: () => this.options.onOpenCheatsheet?.(),
+      },
       {
         id: 'act-settings',
         title: 'Open Settings Hub',

@@ -46,6 +46,13 @@ export class PageRouter {
     return config.categories || [];
   }
 
+  public renderTabBar(containerIdOrElement: string | HTMLElement, config: DashParkConfig | null): void {
+    const container = typeof containerIdOrElement === 'string'
+      ? document.getElementById(containerIdOrElement)
+      : containerIdOrElement;
+    this.renderPageTabs(config, container);
+  }
+
   public renderPageTabs(config: DashParkConfig | null, container: HTMLElement | null): void {
     if (!container || !config) return;
 

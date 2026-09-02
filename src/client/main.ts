@@ -18,6 +18,10 @@ import { PageRouter } from './pages/PageRouter.js';
 import { BentoStudio } from './bento/BentoStudio.js';
 import { FloatingDock } from './dock/FloatingDock.js';
 import { CommandPalette } from './command/CommandPalette.js';
+import { ToastManager } from './notifications/ToastManager.js';
+import { QuickAddModal } from './quickadd/QuickAddModal.js';
+import { KioskRotator } from './kiosk/KioskRotator.js';
+import { SpatialNavigator } from './navigation/SpatialNavigator.js';
 import { stringify as stringifyYaml } from 'yaml';
 
 // Extend window for global icon fallback callbacks, shortcuts, and bento controls
@@ -66,6 +70,10 @@ class DashParkClient {
   public bentoStudio: BentoStudio | null = null;
   public floatingDock: FloatingDock | null = null;
   public commandPalette: CommandPalette | null = null;
+  public toastManager: ToastManager | null = null;
+  public quickAddModal: QuickAddModal | null = null;
+  public kioskRotator: KioskRotator | null = null;
+  public spatialNavigator: SpatialNavigator | null = null;
 
   constructor() {
     this.initGlobalIconHandlers();
@@ -77,6 +85,7 @@ class DashParkClient {
     this.initPageRouter();
     this.initBentoStudio();
     this.initEditor();
+    this.initEnhancements();
     this.initFloatingDock();
     this.initCommandPalette();
     this.initKeyboardShortcuts();
@@ -117,6 +126,46 @@ class DashParkClient {
     setInterval(() => this.pollServiceHealth(), 15000);
   }
 
+  private initEnhancements(): void {
+    this.toastManager = new ToastManager();
+    this.spatialNavigator = new SpatialNavigator();
+
+    this.quickAddModal = new QuickAddModal({
+      getConfig: () => this.configResponse?.config || null,
+      onServiceAdded: async (newService, categoryId) => {
+        if (!this.configResponse?.config) return;
+        const config = this.configResponse.config;
+        const activePageId = this.pageRouter?.getActivePageId() || 'home';
+        let targetCat: Category | undefined;
+
+        if (config.pages && config.pages.length > 0) {
+          const page = config.pages.find((p) => p.id === activePageId) || config.pages[0];
+          targetCat = page.categories.find((c) => c.id === categoryId) || page.categories[0];
+        } else if (config.categories) {
+          targetCat = config.categories.find((c) => c.id === categoryId) || config.categories[0];
+        }
+
+        if (targetCat) {
+          targetCat.services.push(newService);
+          await this.saveCurrentConfig();
+          this.toastManager?.show({
+            title: 'Service Added',
+            message: `${newService.name} added to ${targetCat.name}`,
+            type: 'online',
+          });
+        }
+      },
+    });
+
+    this.kioskRotator = new KioskRotator({
+      getPageIds: () => (this.configResponse?.config?.pages || []).map((p) => p.id),
+      onPageChange: (pageId) => {
+        this.pageRouter?.setActivePageId(pageId);
+        this.renderContent();
+      },
+    });
+  }
+
   private initFloatingDock(): void {
     this.floatingDock = new FloatingDock({
       onLayoutSelect: (layout) => this.setLayout(layout),
@@ -135,6 +184,16 @@ class DashParkClient {
         }
       },
       onOpenCommandPalette: () => this.commandPalette?.open(),
+      onQuickAdd: () => this.quickAddModal?.open(),
+      onToggleKiosk: () => {
+        const active = this.kioskRotator?.toggle();
+        this.floatingDock?.setKioskActive(!!active);
+        this.toastManager?.show({
+          title: active ? 'Kiosk Wallboard Enabled' : 'Kiosk Wallboard Paused',
+          message: active ? 'Cycling across dashboard pages' : 'Returned to interactive view',
+          type: 'info',
+        });
+      },
       onToggleBentoCustomize: async () => {
         const ok = await this.challengePin();
         if (!ok) return;
@@ -170,6 +229,15 @@ class DashParkClient {
         if (ok) {
           this.configEditor?.open();
         }
+      },
+      onQuickAdd: () => this.quickAddModal?.open(),
+      onToggleKiosk: () => {
+        const active = this.kioskRotator?.toggle();
+        this.floatingDock?.setKioskActive(!!active);
+      },
+      onOpenCheatsheet: () => {
+        const cheatsheet = document.getElementById('cheatsheet-dialog') as HTMLDialogElement | null;
+        cheatsheet?.showModal();
       },
       onPageSelect: (pageId) => {
         this.pageRouter?.setActivePageId(pageId);
@@ -301,6 +369,10 @@ class DashParkClient {
       if (savedTheme) {
         this.currentTheme = savedTheme;
         this.applyTheme(savedTheme);
+      }
+      const savedCollapsed = localStorage.getItem('dashpark_collapsed_categories');
+      if (savedCollapsed) {
+        this.collapsedCategories = new Set(JSON.parse(savedCollapsed));
       }
     } catch {
       // Storage access may be restricted
@@ -628,6 +700,12 @@ class DashParkClient {
       const data: { services: Record<string, ServiceHealthData> } = await res.json();
 
       Object.entries(data.services || {}).forEach(([id, result]) => {
+        const service = this.findServiceById(id);
+        const name = service?.name || id;
+
+        // Toast notifications for state transitions
+        this.toastManager?.notifyServiceHealthTransition(id, name, result.status, result.latencyMs);
+
         this.healthDataMap.set(id, result);
 
         // Record latency history for sparklines
@@ -640,9 +718,58 @@ class DashParkClient {
 
         this.updateServiceBadgeInDom(id, result);
       });
+
+      this.updateOutageBanner(data.services || {});
     } catch {
       // Ignore background poll errors
     }
+  }
+
+  private updateOutageBanner(services: Record<string, ServiceHealthData>): void {
+    const offlineList = Object.entries(services).filter(([_, s]) => s.status === 'offline');
+    let banner = document.getElementById('outage-alert-ribbon');
+
+    if (offlineList.length === 0) {
+      banner?.remove();
+      return;
+    }
+
+    const container = document.getElementById('categories-container');
+    if (!container) return;
+
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'outage-alert-ribbon';
+      banner.className = 'outage-alert-ribbon';
+      container.parentElement?.insertBefore(banner, container);
+    }
+
+    const count = offlineList.length;
+    banner.innerHTML = `
+      <div class="outage-ribbon-left">
+        <span class="outage-ribbon-icon">🚨</span>
+        <span>${count} homelab service${count > 1 ? 's are' : ' is'} currently offline</span>
+      </div>
+      <button type="button" class="outage-ribbon-btn" id="outage-filter-btn">Filter Outages</button>
+    `;
+
+    banner.querySelector('#outage-filter-btn')?.addEventListener('click', () => {
+      this.filterOfflineOnly();
+    });
+  }
+
+  private filterOfflineOnly(): void {
+    const cards = document.querySelectorAll<HTMLElement>('.service-card, .bento-card, .compact-row');
+    cards.forEach((card) => {
+      const id = card.getAttribute('data-service-id') || '';
+      const health = this.healthDataMap.get(id);
+      const isOffline = health?.status === 'offline';
+      if (card.tagName === 'TR') {
+        card.style.display = isOffline ? 'table-row' : 'none';
+      } else {
+        card.style.display = isOffline ? 'flex' : 'none';
+      }
+    });
   }
 
   private updateServiceBadgeInDom(serviceId: string, result: ServiceHealthData): void {
@@ -802,79 +929,62 @@ class DashParkClient {
     if (clockContainer) {
       clockContainer.style.display = meta.showClock === false ? 'none' : 'flex';
     }
-
-    // Weather Visibility
-    this.initWeather();
-
-    // Kiosk Mode & PIN Protection
-    const openEditorBtn = document.getElementById('btn-open-editor');
-    if (openEditorBtn) {
-      openEditorBtn.style.display = (meta.auth?.kioskMode && meta.auth?.pinHash) ? 'none' : 'inline-flex';
-    }
   }
 
   private renderTagFilterBar(categories: Category[]): void {
-    const bar = document.getElementById('tag-filter-bar');
-    if (!bar) return;
+    const container = document.getElementById('tag-filter-bar');
+    if (!container) return;
 
-    const allTags = new Set<string>();
-    categories.forEach((c) => {
-      c.services.forEach((s) => {
-        (s.tags || []).forEach((t) => allTags.add(t.toLowerCase()));
+    // Collect all unique tags
+    const tags = new Set<string>();
+    categories.forEach((cat) => {
+      cat.services.forEach((svc) => {
+        (svc.tags || []).forEach((t) => tags.add(t));
       });
     });
 
-    if (allTags.size === 0) {
-      bar.innerHTML = '';
+    if (tags.size === 0) {
+      container.innerHTML = '';
+      container.style.display = 'none';
       return;
     }
 
-    const tagList = Array.from(allTags).sort();
-    bar.innerHTML = `
-      <span class="tag-pill ${!this.activeTag ? 'active' : ''}" data-tag="">All</span>
-      ${tagList
+    container.style.display = 'flex';
+    const tagArray = Array.from(tags).sort();
+
+    container.innerHTML = `
+      <button type="button" class="tag-chip ${!this.activeTag ? 'active' : ''}" data-tag="">All</button>
+      ${tagArray
         .map(
           (t) =>
-            `<span class="tag-pill ${this.activeTag === t ? 'active' : ''}" data-tag="${this.escapeHtml(t)}">#${this.escapeHtml(t)}</span>`
+            `<button type="button" class="tag-chip ${this.activeTag === t ? 'active' : ''}" data-tag="${this.escapeHtml(t)}">#${this.escapeHtml(t)}</button>`
         )
         .join('')}
     `;
 
-    bar.querySelectorAll<HTMLElement>('.tag-pill').forEach((pill) => {
-      pill.addEventListener('click', () => {
-        const tag = pill.getAttribute('data-tag') || null;
+    container.querySelectorAll<HTMLButtonElement>('.tag-chip').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tag = btn.getAttribute('data-tag') || null;
         this.activeTag = tag;
-        bar.querySelectorAll('.tag-pill').forEach((p) => p.classList.remove('active'));
-        pill.classList.add('active');
+        container.querySelectorAll('.tag-chip').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
         this.filterServices();
       });
     });
   }
 
-  private renderContent(): void {
-    const config = this.configResponse?.config;
-    const pageTabsContainer = document.getElementById('page-tabs-bar');
-    this.pageRouter?.renderPageTabs(config || null, pageTabsContainer);
+  public renderContent(): void {
+    if (!this.configResponse?.config) return;
 
-    const categories = this.pageRouter?.getActiveCategories(config || null) || [];
+    const config = this.configResponse.config;
+    const categories = this.pageRouter?.getActiveCategories(config) || config.categories || [];
     const container = document.getElementById('categories-container');
-    const editBentoBtn = document.getElementById('btn-edit-bento');
-
-    if (editBentoBtn) {
-      editBentoBtn.style.display = this.currentLayout === 'bento' ? 'inline-flex' : 'none';
-    }
-
     if (!container) return;
 
-    if (categories.length === 0) {
-      container.innerHTML = `
-        <div class="loading-state">
-          <p>No categories or services defined in this page.</p>
-        </div>
-      `;
-      return;
-    }
+    // 1. Render Multi-Page Navigation Bar
+    this.pageRouter?.renderTabBar('page-tabs-container', config);
 
+    // 2. Render Active Layout
     if (this.currentLayout === 'bento') {
       this.renderBentoLayout(categories, container);
     } else if (this.currentLayout === 'compact') {
@@ -895,13 +1005,27 @@ class DashParkClient {
         const isCollapsed = this.collapsedCategories.has(cat.id);
         const catSvg = getSvgIcon(cat.icon);
 
+        const onlineCount = cat.services.filter((s) => this.healthDataMap.get(s.id)?.status === 'online').length;
+        const offlineCount = cat.services.filter((s) => this.healthDataMap.get(s.id)?.status === 'offline').length;
+        const degradedCount = cat.services.filter((s) => this.healthDataMap.get(s.id)?.status === 'degraded').length;
+
+        let rollupClass = 'all-online';
+        let rollupText = `🟢 ${onlineCount}/${cat.services.length}`;
+        if (offlineCount > 0) {
+          rollupClass = 'has-offline';
+          rollupText = `🔴 ${offlineCount} Offline`;
+        } else if (degradedCount > 0) {
+          rollupClass = 'has-degraded';
+          rollupText = `🟡 ${degradedCount} Degraded`;
+        }
+
         return `
           <section class="category-section ${isCollapsed ? 'collapsed' : ''}" data-category-id="${cat.id}">
             <div class="category-header" onclick="window.__dashParkToggleCategory('${cat.id}')">
               <div class="category-title-group">
                 <div class="category-icon-box">${catSvg}</div>
                 <h2 class="category-title">${this.escapeHtml(cat.name)}</h2>
-                <span class="category-count">${cat.services.length}</span>
+                <span class="category-health-rollup ${rollupClass}">${rollupText}</span>
               </div>
               <div class="category-chevron">${SVG_ICONS.chevronDown}</div>
             </div>
@@ -918,6 +1042,14 @@ class DashParkClient {
         this.collapsedCategories.delete(id);
       } else {
         this.collapsedCategories.add(id);
+      }
+      try {
+        localStorage.setItem(
+          'dashpark_collapsed_categories',
+          JSON.stringify(Array.from(this.collapsedCategories))
+        );
+      } catch {
+        // Ignore
       }
       const sec = document.querySelector(`[data-category-id="${id}"]`);
       if (sec) {
@@ -1147,6 +1279,7 @@ class DashParkClient {
                   <tr 
                     class="compact-row"
                     onclick="window.open('${this.escapeHtml(service.url)}', '${service.target || '_blank'}')"
+                    data-service-id="${service.id}"
                     data-service-name="${this.escapeHtml(service.name.toLowerCase())}"
                     data-service-desc="${this.escapeHtml((service.description || '').toLowerCase())}"
                     data-service-tags="${this.escapeHtml((service.tags || []).join(' ').toLowerCase())}"
@@ -1228,6 +1361,7 @@ class DashParkClient {
         target="${svc.target || '_blank'}" 
         rel="noopener noreferrer"
         class="service-card" 
+        data-service-id="${svc.id}"
         data-service-name="${this.escapeHtml(svc.name.toLowerCase())}"
         data-service-desc="${this.escapeHtml((svc.description || '').toLowerCase())}"
         data-service-tags="${this.escapeHtml((svc.tags || []).join(' ').toLowerCase())}"

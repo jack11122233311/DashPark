@@ -6,6 +6,8 @@ export interface FloatingDockOptions {
   onOpenSettings: () => void;
   onOpenCommandPalette: () => void;
   onToggleBentoCustomize: () => void;
+  onQuickAdd?: () => void;
+  onToggleKiosk?: () => void;
   getCurrentLayout: () => LayoutMode;
   getCurrentTheme: () => ThemeName;
 }
@@ -17,6 +19,7 @@ export class FloatingDock {
   private options: FloatingDockOptions;
   private isThemePopoverOpen: boolean = false;
   private isBentoEditing: boolean = false;
+  private isKioskActive: boolean = false;
 
   constructor(options: FloatingDockOptions) {
     this.options = options;
@@ -71,6 +74,17 @@ export class FloatingDock {
         </div>
 
         <div class="dock-divider"></div>
+
+        <!-- Quick Add Button -->
+        <button 
+          type="button" 
+          id="dock-btn-quickadd" 
+          class="dock-action-btn" 
+          title="Quick Add Service (+)"
+        >
+          <span class="dock-icon">➕</span>
+          <span class="dock-btn-label">Add</span>
+        </button>
 
         <!-- Bento Edit Button (Visible when layout is Bento) -->
         <button 
@@ -130,6 +144,16 @@ export class FloatingDock {
         <button type="button" id="dock-btn-cmd" class="dock-action-btn" title="Open Command Palette (Ctrl+K)">
           <span class="dock-icon">⚡</span>
           <kbd class="dock-kbd">⌘K</kbd>
+        </button>
+
+        <!-- Kiosk Wallboard Mode Trigger -->
+        <button 
+          type="button" 
+          id="dock-btn-kiosk" 
+          class="dock-action-btn ${this.isKioskActive ? 'active' : ''}" 
+          title="Toggle Auto-Rotating Kiosk Wallboard"
+        >
+          <span class="dock-icon">${this.isKioskActive ? '⏸️' : '📺'}</span>
         </button>
 
         <!-- Config Editor Launcher -->
@@ -193,10 +217,22 @@ export class FloatingDock {
       }
     });
 
+    // Quick Add trigger
+    const quickAddBtn = this.container.querySelector('#dock-btn-quickadd');
+    quickAddBtn?.addEventListener('click', () => {
+      this.options.onQuickAdd?.();
+    });
+
     // Command palette trigger
     const cmdBtn = this.container.querySelector('#dock-btn-cmd');
     cmdBtn?.addEventListener('click', () => {
       this.options.onOpenCommandPalette();
+    });
+
+    // Kiosk trigger
+    const kioskBtn = this.container.querySelector('#dock-btn-kiosk');
+    kioskBtn?.addEventListener('click', () => {
+      this.options.onToggleKiosk?.();
     });
 
     // Edit button trigger
@@ -251,6 +287,15 @@ export class FloatingDock {
       bentoBtn.innerHTML = isEditing
         ? `<span class="dock-icon">💾</span><span class="dock-btn-label">Done</span>`
         : `<span class="dock-icon">✏️</span><span class="dock-btn-label">Customize</span>`;
+    }
+  }
+
+  public setKioskActive(isActive: boolean): void {
+    this.isKioskActive = isActive;
+    const kioskBtn = this.container?.querySelector<HTMLButtonElement>('#dock-btn-kiosk');
+    if (kioskBtn) {
+      kioskBtn.classList.toggle('active', isActive);
+      kioskBtn.innerHTML = `<span class="dock-icon">${isActive ? '⏸️' : '📺'}</span>`;
     }
   }
 
