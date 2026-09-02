@@ -7,13 +7,10 @@ import type {
   ErrorDiagnostic,
   LayoutMode,
   ThemeName,
-  HealthStatus,
 } from '../shared/types.js';
 import { globalIconResolver } from './icons/IconResolver.js';
-import { getSvgIcon, SVG_ICONS } from './icons/lucide-svgs.js';
 import { SystemWidget } from './widgets/SystemWidget.js';
 import { ConfigEditor } from './editor/ConfigEditor.js';
-import { ChartWidget } from './widgets/ChartWidget.js';
 import { PageRouter } from './pages/PageRouter.js';
 import { BentoStudio } from './bento/BentoStudio.js';
 import { FloatingDock } from './dock/FloatingDock.js';
@@ -22,6 +19,11 @@ import { ToastManager } from './notifications/ToastManager.js';
 import { QuickAddModal } from './quickadd/QuickAddModal.js';
 import { KioskRotator } from './kiosk/KioskRotator.js';
 import { SpatialNavigator } from './navigation/SpatialNavigator.js';
+import { PreferenceStore } from './state/PreferenceStore.js';
+import { DomRenderer } from './dom/DomRenderer.js';
+import { HealthPoller } from './services/HealthPoller.js';
+import { WidgetPoller } from './services/WidgetPoller.js';
+import { getSvgIcon, SVG_ICONS } from './icons/lucide-svgs.js';
 import { stringify as stringifyYaml } from 'yaml';
 
 // Extend window for global icon fallback callbacks, shortcuts, and bento controls
@@ -36,33 +38,13 @@ declare global {
   }
 }
 
-interface ServiceHealthData {
-  serviceId: string;
-  status: HealthStatus;
-  latencyMs: number;
-  statusCode?: number;
-  error?: string;
-  lastCheckedAt: string;
-}
-
-interface WidgetData {
-  serviceId: string;
-  value: string | number;
-  label?: string;
-  unit?: string;
-}
-
-class DashParkClient {
+export class DashParkClient {
   public configResponse: ConfigResponse | null = null;
   private searchTerm: string = '';
   private activeTag: string | null = null;
   private currentLayout: LayoutMode = 'grid';
   private currentTheme: ThemeName = 'dark';
   private collapsedCategories: Set<string> = new Set();
-  private healthDataMap: Map<string, ServiceHealthData> = new Map();
-  private latencyHistoryMap: Map<string, number[]> = new Map();
-  private widgetDataMap: Map<string, WidgetData> = new Map();
-  private widgetPollTimers: Map<string, NodeJS.Timeout> = new Map();
 
   public systemWidget: SystemWidget | null = null;
   public configEditor: ConfigEditor | null = null;
@@ -74,6 +56,8 @@ class DashParkClient {
   public quickAddModal: QuickAddModal | null = null;
   public kioskRotator: KioskRotator | null = null;
   public spatialNavigator: SpatialNavigator | null = null;
+  public healthPoller: HealthPoller | null = null;
+  public widgetPoller: WidgetPoller | null = null;
 
   constructor() {
     this.initGlobalIconHandlers();
@@ -85,7 +69,7 @@ class DashParkClient {
     this.initPageRouter();
     this.initBentoStudio();
     this.initEditor();
-    this.initEnhancements();
+    this.initServicesAndEnhancements();
     this.initFloatingDock();
     this.initCommandPalette();
     this.initKeyboardShortcuts();
@@ -121,14 +105,21 @@ class DashParkClient {
 
     this.loadData();
 
-    // Poll server health & service statuses periodically
+    // Poll server health & start poller
     setInterval(() => this.updateServerHealth(), 10000);
-    setInterval(() => this.pollServiceHealth(), 15000);
+    this.healthPoller?.start();
   }
 
-  private initEnhancements(): void {
+  private initServicesAndEnhancements(): void {
     this.toastManager = new ToastManager();
     this.spatialNavigator = new SpatialNavigator();
+    this.widgetPoller = new WidgetPoller();
+
+    this.healthPoller = new HealthPoller({
+      toastManager: this.toastManager,
+      getServiceName: (id) => this.findServiceById(id)?.name || id,
+      onFilterOffline: () => this.filterOfflineOnly(),
+    });
 
     this.quickAddModal = new QuickAddModal({
       getConfig: () => this.configResponse?.config || null,
@@ -171,11 +162,7 @@ class DashParkClient {
       onLayoutSelect: (layout) => this.setLayout(layout),
       onThemeSelect: (theme) => {
         this.applyTheme(theme);
-        try {
-          localStorage.setItem('dashpark_theme', theme);
-        } catch {
-          // Ignore
-        }
+        PreferenceStore.setTheme(theme);
       },
       onOpenSettings: async () => {
         const ok = await this.challengePin();
@@ -218,11 +205,7 @@ class DashParkClient {
       onLayoutSelect: (layout) => this.setLayout(layout),
       onThemeSelect: (theme) => {
         this.applyTheme(theme);
-        try {
-          localStorage.setItem('dashpark_theme', theme);
-        } catch {
-          // Ignore
-        }
+        PreferenceStore.setTheme(theme);
       },
       onOpenSettings: async () => {
         const ok = await this.challengePin();
@@ -360,23 +343,10 @@ class DashParkClient {
   }
 
   private loadPreferences(): void {
-    try {
-      const savedLayout = localStorage.getItem('dashpark_layout_mode') as LayoutMode;
-      if (savedLayout && ['grid', 'bento', 'compact'].includes(savedLayout)) {
-        this.currentLayout = savedLayout;
-      }
-      const savedTheme = localStorage.getItem('dashpark_theme') as ThemeName;
-      if (savedTheme) {
-        this.currentTheme = savedTheme;
-        this.applyTheme(savedTheme);
-      }
-      const savedCollapsed = localStorage.getItem('dashpark_collapsed_categories');
-      if (savedCollapsed) {
-        this.collapsedCategories = new Set(JSON.parse(savedCollapsed));
-      }
-    } catch {
-      // Storage access may be restricted
-    }
+    this.currentLayout = PreferenceStore.getLayout('grid');
+    this.currentTheme = PreferenceStore.getTheme('dark');
+    this.collapsedCategories = PreferenceStore.getCollapsedCategories();
+    this.applyTheme(this.currentTheme);
   }
 
   private async initWeather(): Promise<void> {
@@ -432,7 +402,7 @@ class DashParkClient {
 
   public async challengePin(): Promise<boolean> {
     const meta = this.configResponse?.config?.meta;
-    if (!meta?.auth?.pinHash) return true; // No PIN configured
+    if (!meta?.auth?.pinHash) return true;
 
     const dialog = document.getElementById('pin-dialog') as HTMLDialogElement | null;
     const pinInput = document.getElementById('pin-input') as HTMLInputElement | null;
@@ -584,11 +554,7 @@ class DashParkClient {
 
   public setLayout(layout: LayoutMode): void {
     this.currentLayout = layout;
-    try {
-      localStorage.setItem('dashpark_layout_mode', layout);
-    } catch {
-      // Ignore
-    }
+    PreferenceStore.setLayout(layout);
     this.updateLayoutButtons();
     this.floatingDock?.setLayout(layout);
     if (this.configResponse?.config?.categories || this.configResponse?.config?.pages) {
@@ -612,11 +578,7 @@ class DashParkClient {
     themeSelect.addEventListener('change', (e) => {
       const theme = (e.target as HTMLSelectElement).value as ThemeName;
       this.applyTheme(theme);
-      try {
-        localStorage.setItem('dashpark_theme', theme);
-      } catch {
-        // Ignore
-      }
+      PreferenceStore.setTheme(theme);
     });
   }
 
@@ -663,7 +625,12 @@ class DashParkClient {
   }
 
   private async loadData(): Promise<void> {
-    await Promise.all([this.loadConfig(), this.updateServerHealth(), this.pollServiceHealth(), this.initWeather()]);
+    await Promise.all([
+      this.loadConfig(),
+      this.updateServerHealth(),
+      this.healthPoller?.poll(),
+      this.initWeather(),
+    ]);
   }
 
   private async updateServerHealth(): Promise<void> {
@@ -693,165 +660,17 @@ class DashParkClient {
     }
   }
 
-  private async pollServiceHealth(): Promise<void> {
-    try {
-      const res = await fetch('/api/v1/health/services');
-      if (!res.ok) return;
-      const data: { services: Record<string, ServiceHealthData> } = await res.json();
-
-      Object.entries(data.services || {}).forEach(([id, result]) => {
-        const service = this.findServiceById(id);
-        const name = service?.name || id;
-
-        // Toast notifications for state transitions
-        this.toastManager?.notifyServiceHealthTransition(id, name, result.status, result.latencyMs);
-
-        this.healthDataMap.set(id, result);
-
-        // Record latency history for sparklines
-        const history = this.latencyHistoryMap.get(id) || [];
-        if (result.status === 'online' || result.status === 'degraded') {
-          history.push(result.latencyMs);
-          if (history.length > 10) history.shift();
-          this.latencyHistoryMap.set(id, history);
-        }
-
-        this.updateServiceBadgeInDom(id, result);
-      });
-
-      this.updateOutageBanner(data.services || {});
-    } catch {
-      // Ignore background poll errors
-    }
-  }
-
-  private updateOutageBanner(services: Record<string, ServiceHealthData>): void {
-    const offlineList = Object.entries(services).filter(([_, s]) => s.status === 'offline');
-    let banner = document.getElementById('outage-alert-ribbon');
-
-    if (offlineList.length === 0) {
-      banner?.remove();
-      return;
-    }
-
-    const container = document.getElementById('categories-container');
-    if (!container) return;
-
-    if (!banner) {
-      banner = document.createElement('div');
-      banner.id = 'outage-alert-ribbon';
-      banner.className = 'outage-alert-ribbon';
-      container.parentElement?.insertBefore(banner, container);
-    }
-
-    const count = offlineList.length;
-    banner.innerHTML = `
-      <div class="outage-ribbon-left">
-        <span class="outage-ribbon-icon">🚨</span>
-        <span>${count} homelab service${count > 1 ? 's are' : ' is'} currently offline</span>
-      </div>
-      <button type="button" class="outage-ribbon-btn" id="outage-filter-btn">Filter Outages</button>
-    `;
-
-    banner.querySelector('#outage-filter-btn')?.addEventListener('click', () => {
-      this.filterOfflineOnly();
-    });
-  }
-
   private filterOfflineOnly(): void {
     const cards = document.querySelectorAll<HTMLElement>('.service-card, .bento-card, .compact-row');
     cards.forEach((card) => {
       const id = card.getAttribute('data-service-id') || '';
-      const health = this.healthDataMap.get(id);
+      const health = this.healthPoller?.getHealth(id);
       const isOffline = health?.status === 'offline';
       if (card.tagName === 'TR') {
         card.style.display = isOffline ? 'table-row' : 'none';
       } else {
         card.style.display = isOffline ? 'flex' : 'none';
       }
-    });
-  }
-
-  private updateServiceBadgeInDom(serviceId: string, result: ServiceHealthData): void {
-    const badges = document.querySelectorAll<HTMLElement>(`[data-health-badge="${serviceId}"]`);
-    badges.forEach((badge) => {
-      badge.className = `service-latency-badge ${result.status}`;
-      if (result.status === 'online') {
-        badge.textContent = `${result.latencyMs}ms`;
-      } else if (result.status === 'degraded') {
-        badge.textContent = `${result.latencyMs}ms`;
-      } else if (result.status === 'offline') {
-        badge.textContent = 'Offline';
-      }
-    });
-
-    const dots = document.querySelectorAll<HTMLElement>(`[data-status-dot="${serviceId}"]`);
-    dots.forEach((dot) => {
-      dot.className = `service-status-dot ${result.status}`;
-    });
-
-    // Render sparklines dynamically based on container type
-    const sparkContainers = document.querySelectorAll<HTMLElement>(`[data-sparkline="${serviceId}"]`);
-    const history = this.latencyHistoryMap.get(serviceId);
-    if (history && history.length >= 2) {
-      sparkContainers.forEach((container) => {
-        const isBento = container.classList.contains('bento-telemetry-slot');
-        const w = isBento ? 120 : 80;
-        const h = isBento ? 34 : 22;
-        ChartWidget.renderSparkline(container, [], history, '#10b981', w, h);
-      });
-    }
-  }
-
-  private startWidgetPollers(categories: Category[]): void {
-    // Clear existing timers
-    this.widgetPollTimers.forEach((timer) => clearInterval(timer));
-    this.widgetPollTimers.clear();
-
-    categories.forEach((cat) => {
-      cat.services.forEach((svc) => {
-        if (svc.widget && svc.widget.enabled !== false && svc.widget.url) {
-          const poll = async () => {
-            try {
-              const query = new URLSearchParams({
-                url: svc.widget!.url!,
-                jsonPath: svc.widget!.jsonPath || '',
-                headers: JSON.stringify(svc.widget!.headers || {}),
-              });
-
-              const res = await fetch(`/api/v1/widgets/proxy?${query.toString()}`);
-              if (!res.ok) return;
-              const data = await res.json();
-
-              if (data.success && data.value !== undefined) {
-                this.widgetDataMap.set(svc.id, {
-                  serviceId: svc.id,
-                  value: data.value,
-                  label: svc.widget?.label,
-                  unit: svc.widget?.unit,
-                });
-                this.updateWidgetBadgeInDom(svc.id, data.value, svc.widget?.label, svc.widget?.unit);
-              }
-            } catch {
-              // Ignore widget poll errors
-            }
-          };
-
-          // Immediate poll
-          poll();
-          const intervalMs = (svc.widget.refreshIntervalSeconds || 30) * 1000;
-          this.widgetPollTimers.set(svc.id, setInterval(poll, intervalMs));
-        }
-      });
-    });
-  }
-
-  private updateWidgetBadgeInDom(serviceId: string, value: any, label?: string, unit?: string): void {
-    const badges = document.querySelectorAll<HTMLElement>(`[data-widget-badge="${serviceId}"]`);
-    const formatted = `${label ? label + ': ' : ''}${value}${unit || ''}`;
-    badges.forEach((badge) => {
-      badge.textContent = formatted;
-      badge.style.display = 'inline-flex';
     });
   }
 
@@ -872,7 +691,7 @@ class DashParkClient {
         const categories = this.pageRouter?.getActiveCategories(data.config) || data.config.categories || [];
         this.renderTagFilterBar(categories);
         this.renderContent();
-        this.startWidgetPollers(categories);
+        this.widgetPoller?.updateTargets(categories);
       }
     } catch (err) {
       console.error('[DashPark] Failed to load config:', err);
@@ -957,7 +776,7 @@ class DashParkClient {
       ${tagArray
         .map(
           (t) =>
-            `<button type="button" class="tag-chip ${this.activeTag === t ? 'active' : ''}" data-tag="${this.escapeHtml(t)}">#${this.escapeHtml(t)}</button>`
+            `<button type="button" class="tag-chip ${this.activeTag === t ? 'active' : ''}" data-tag="${DomRenderer.escapeHtml(t)}">#${DomRenderer.escapeHtml(t)}</button>`
         )
         .join('')}
     `;
@@ -1000,37 +819,37 @@ class DashParkClient {
 
   /* 1. Categorized Grid Layout */
   private renderCategorizedLayout(categories: Category[], container: HTMLElement): void {
+    const healthMap = this.healthPoller?.getAllHealth() || new Map();
+
     container.innerHTML = categories
       .map((cat) => {
         const isCollapsed = this.collapsedCategories.has(cat.id);
         const catSvg = getSvgIcon(cat.icon);
+        const rollup = DomRenderer.computeCategoryHealthRollup(cat.services, healthMap);
 
-        const onlineCount = cat.services.filter((s) => this.healthDataMap.get(s.id)?.status === 'online').length;
-        const offlineCount = cat.services.filter((s) => this.healthDataMap.get(s.id)?.status === 'offline').length;
-        const degradedCount = cat.services.filter((s) => this.healthDataMap.get(s.id)?.status === 'degraded').length;
-
-        let rollupClass = 'all-online';
-        let rollupText = `🟢 ${onlineCount}/${cat.services.length}`;
-        if (offlineCount > 0) {
-          rollupClass = 'has-offline';
-          rollupText = `🔴 ${offlineCount} Offline`;
-        } else if (degradedCount > 0) {
-          rollupClass = 'has-degraded';
-          rollupText = `🟡 ${degradedCount} Degraded`;
-        }
+        const cardsHtml = cat.services
+          .map((svc) =>
+            DomRenderer.renderStandardCard(
+              svc,
+              cat.icon,
+              this.healthPoller?.getHealth(svc.id),
+              this.widgetPoller?.getWidgetData(svc.id)
+            )
+          )
+          .join('');
 
         return `
           <section class="category-section ${isCollapsed ? 'collapsed' : ''}" data-category-id="${cat.id}">
             <div class="category-header" onclick="window.__dashParkToggleCategory('${cat.id}')">
               <div class="category-title-group">
                 <div class="category-icon-box">${catSvg}</div>
-                <h2 class="category-title">${this.escapeHtml(cat.name)}</h2>
-                <span class="category-health-rollup ${rollupClass}">${rollupText}</span>
+                <h2 class="category-title">${DomRenderer.escapeHtml(cat.name)}</h2>
+                <span class="category-health-rollup ${rollup.cssClass}">${rollup.text}</span>
               </div>
               <div class="category-chevron">${SVG_ICONS.chevronDown}</div>
             </div>
             <div class="service-grid">
-              ${cat.services.map((svc) => this.renderStandardServiceCard(svc, cat.icon)).join('')}
+              ${cardsHtml}
             </div>
           </section>
         `;
@@ -1038,22 +857,15 @@ class DashParkClient {
       .join('');
 
     window.__dashParkToggleCategory = (id: string) => {
-      if (this.collapsedCategories.has(id)) {
-        this.collapsedCategories.delete(id);
-      } else {
+      const isNowCollapsed = PreferenceStore.toggleCategoryCollapsed(id);
+      if (isNowCollapsed) {
         this.collapsedCategories.add(id);
-      }
-      try {
-        localStorage.setItem(
-          'dashpark_collapsed_categories',
-          JSON.stringify(Array.from(this.collapsedCategories))
-        );
-      } catch {
-        // Ignore
+      } else {
+        this.collapsedCategories.delete(id);
       }
       const sec = document.querySelector(`[data-category-id="${id}"]`);
       if (sec) {
-        sec.classList.toggle('collapsed', this.collapsedCategories.has(id));
+        sec.classList.toggle('collapsed', isNowCollapsed);
       }
     };
   }
@@ -1070,87 +882,22 @@ class DashParkClient {
     const isEditMode = this.bentoStudio?.isEditMode || false;
     container.classList.toggle('bento-edit-mode', isEditMode);
 
+    const bentoCardsHtml = allServices
+      .map(({ service, categoryName, categoryIcon }) =>
+        DomRenderer.renderBentoCard(
+          service,
+          categoryName,
+          categoryIcon,
+          this.healthPoller?.getHealth(service.id),
+          this.widgetPoller?.getWidgetData(service.id),
+          isEditMode
+        )
+      )
+      .join('');
+
     container.innerHTML = `
       <div class="layout-bento-container ${isEditMode ? 'bento-edit-mode' : ''}">
-        ${allServices
-          .map(({ service, categoryName, categoryIcon }) => {
-            const health = this.healthDataMap.get(service.id);
-            const status = health?.status || 'pending';
-            const latencyStr = health ? `${health.latencyMs}ms` : 'Ping';
-            const widgetData = this.widgetDataMap.get(service.id);
-            const showGraph = service.widget?.enabled !== false && service.widget?.showGraph !== false;
-            const spanClass = `span-${service.bentoSpan || '1x1'}`;
-            const isHero = service.bentoSpan === '2x1' || service.bentoSpan === '2x2';
-
-            const iconHtml = globalIconResolver.renderIcon({
-              serviceName: service.name,
-              iconIdentifier: service.icon,
-              serviceUrl: service.url,
-              categoryIcon,
-              size: isHero ? 50 : 44,
-            });
-
-            const shortcutsHtml = (service.shortcuts || []).length > 0
-              ? `<div class="service-shortcuts-row">
-                  ${service.shortcuts!
-                    .map(
-                      (sc) =>
-                        `<span class="service-shortcut-chip" onclick="window.__dashParkOpenShortcut(event, '${this.escapeHtml(sc.url)}', '${sc.target || '_blank'}')">${this.escapeHtml(sc.name)}</span>`
-                    )
-                    .join('')}
-                </div>`
-              : '';
-
-            const editToolbarHtml = isEditMode
-              ? `<div class="bento-tile-toolbar">
-                  <button type="button" class="bento-tile-btn" onclick="window.__dashParkCycleTileSpan(event, '${service.id}')" title="Cycle tile size">
-                    📐 ${service.bentoSpan || '1x1'}
-                  </button>
-                  <button type="button" class="bento-tile-btn" onclick="window.__dashParkCycleTelemetry(event, '${service.id}')" title="Toggle graph/stat display">
-                    📊 ${showGraph ? 'Graph' : service.widget?.enabled !== false ? 'Stat' : 'Off'}
-                  </button>
-                </div>`
-              : '';
-
-            return `
-              <a 
-                href="${isEditMode ? 'javascript:void(0)' : this.escapeHtml(service.url)}" 
-                target="${service.target || '_blank'}" 
-                rel="noopener noreferrer"
-                class="bento-card ${spanClass}"
-                data-service-id="${service.id}"
-                data-service-name="${this.escapeHtml(service.name.toLowerCase())}"
-                data-service-desc="${this.escapeHtml((service.description || '').toLowerCase())}"
-                data-service-tags="${this.escapeHtml((service.tags || []).join(' ').toLowerCase())}"
-              >
-                ${editToolbarHtml}
-                <div class="bento-top-row">
-                  ${iconHtml}
-                  <div class="bento-meta">
-                    ${showGraph ? `<div class="service-sparkline-box bento-telemetry-slot" data-sparkline="${service.id}"></div>` : ''}
-                    <span class="service-latency-badge ${status}" data-health-badge="${service.id}">${latencyStr}</span>
-                    <span class="bento-category-badge">${this.escapeHtml(categoryName)}</span>
-                    <span class="service-status-dot ${status}" data-status-dot="${service.id}"></span>
-                  </div>
-                </div>
-                <div class="bento-bottom-row">
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
-                    <h3 class="bento-title">${this.escapeHtml(service.name)}</h3>
-                    <span 
-                      class="service-widget-badge" 
-                      data-widget-badge="${service.id}" 
-                      style="${widgetData ? 'display: inline-flex;' : 'display: none;'}"
-                    >
-                      ${widgetData ? `${widgetData.label ? widgetData.label + ': ' : ''}${widgetData.value}${widgetData.unit || ''}` : ''}
-                    </span>
-                  </div>
-                  ${service.description ? `<p class="bento-desc">${this.escapeHtml(service.description)}</p>` : ''}
-                  ${shortcutsHtml}
-                </div>
-              </a>
-            `;
-          })
-          .join('')}
+        ${bentoCardsHtml}
       </div>
     `;
 
@@ -1159,11 +906,50 @@ class DashParkClient {
     }
   }
 
+  /* 3. Compact List Layout */
+  private renderCompactLayout(categories: Category[], container: HTMLElement): void {
+    const allServices: Array<{ service: ServiceItem; categoryName: string; categoryIcon?: string }> = [];
+    categories.forEach((cat) => {
+      cat.services.forEach((s) => {
+        allServices.push({ service: s, categoryName: cat.name, categoryIcon: cat.icon });
+      });
+    });
+
+    const rowsHtml = allServices
+      .map(({ service, categoryName, categoryIcon }) =>
+        DomRenderer.renderCompactRow(
+          service,
+          categoryName,
+          categoryIcon,
+          this.healthPoller?.getHealth(service.id),
+          this.widgetPoller?.getWidgetData(service.id)
+        )
+      )
+      .join('');
+
+    container.innerHTML = `
+      <div class="compact-list-wrapper">
+        <table class="compact-table">
+          <thead>
+            <tr>
+              <th style="width: 30%;">Service</th>
+              <th style="width: 15%;">Category</th>
+              <th style="width: 25%;">Destination URL</th>
+              <th style="width: 30%; text-align: right;">Latency, Shortcuts & Badges</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   public findServiceById(serviceId: string): ServiceItem | null {
     if (!this.configResponse?.config) return null;
     const config = this.configResponse.config;
 
-    // Check in pages if present
     if (config.pages && config.pages.length > 0) {
       for (const page of config.pages) {
         for (const cat of page.categories) {
@@ -1173,7 +959,6 @@ class DashParkClient {
       }
     }
 
-    // Check in root categories
     for (const cat of config.categories || []) {
       const svc = cat.services.find((s) => s.id === serviceId);
       if (svc) return svc;
@@ -1186,10 +971,6 @@ class DashParkClient {
     if (!this.configResponse?.config) return;
     const config = this.configResponse.config;
     const activePageId = this.pageRouter?.getActivePageId() || 'home';
-
-    // Map existing services to their target order
-    const serviceMap = new Map<string, ServiceItem>();
-    reorderedServices.forEach((s) => serviceMap.set(s.id, s));
 
     const sortCategoryServices = (categories: Category[]) => {
       categories.forEach((cat) => {
@@ -1230,166 +1011,6 @@ class DashParkClient {
     } catch (err) {
       console.error('[DashPark] Failed to auto-save layout:', err);
     }
-  }
-
-  /* 3. Compact List Layout */
-  private renderCompactLayout(categories: Category[], container: HTMLElement): void {
-    const allServices: Array<{ service: ServiceItem; categoryName: string; categoryIcon?: string }> = [];
-    categories.forEach((cat) => {
-      cat.services.forEach((s) => {
-        allServices.push({ service: s, categoryName: cat.name, categoryIcon: cat.icon });
-      });
-    });
-
-    container.innerHTML = `
-      <div class="compact-list-wrapper">
-        <table class="compact-table">
-          <thead>
-            <tr>
-              <th style="width: 30%;">Service</th>
-              <th style="width: 15%;">Category</th>
-              <th style="width: 25%;">Destination URL</th>
-              <th style="width: 30%; text-align: right;">Latency, Shortcuts & Badges</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${allServices
-              .map(({ service, categoryName, categoryIcon }) => {
-                const health = this.healthDataMap.get(service.id);
-                const status = health?.status || 'pending';
-                const latencyStr = health ? `${health.latencyMs}ms` : '---';
-                const widgetData = this.widgetDataMap.get(service.id);
-
-                const iconHtml = globalIconResolver.renderIcon({
-                  serviceName: service.name,
-                  iconIdentifier: service.icon,
-                  serviceUrl: service.url,
-                  categoryIcon,
-                  size: 28,
-                });
-
-                const shortcutsInline = (service.shortcuts || [])
-                  .map(
-                    (sc) =>
-                      `<span class="service-shortcut-chip" style="padding: 0.1rem 0.35rem; font-size: 0.625rem;" onclick="window.__dashParkOpenShortcut(event, '${this.escapeHtml(sc.url)}', '${sc.target || '_blank'}')">${this.escapeHtml(sc.name)}</span>`
-                  )
-                  .join('');
-
-                return `
-                  <tr 
-                    class="compact-row"
-                    onclick="window.open('${this.escapeHtml(service.url)}', '${service.target || '_blank'}')"
-                    data-service-id="${service.id}"
-                    data-service-name="${this.escapeHtml(service.name.toLowerCase())}"
-                    data-service-desc="${this.escapeHtml((service.description || '').toLowerCase())}"
-                    data-service-tags="${this.escapeHtml((service.tags || []).join(' ').toLowerCase())}"
-                  >
-                    <td>
-                      <div class="compact-name-cell">
-                        ${iconHtml}
-                        <span>${this.escapeHtml(service.name)}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span class="bento-category-badge">${this.escapeHtml(categoryName)}</span>
-                    </td>
-                    <td>
-                      <a href="${this.escapeHtml(service.url)}" class="compact-url-link" onclick="event.stopPropagation();" target="_blank">
-                        ${this.escapeHtml(service.url)}
-                      </a>
-                    </td>
-                    <td style="text-align: right;">
-                      <div style="display: inline-flex; align-items: center; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap;">
-                        ${shortcutsInline}
-                        <span 
-                          class="service-widget-badge" 
-                          data-widget-badge="${service.id}" 
-                          style="${widgetData ? 'display: inline-flex;' : 'display: none;'}"
-                        >
-                          ${widgetData ? `${widgetData.label ? widgetData.label + ': ' : ''}${widgetData.value}${widgetData.unit || ''}` : ''}
-                        </span>
-                        <span class="service-latency-badge ${status}" data-health-badge="${service.id}">
-                          <span class="service-status-dot ${status}" data-status-dot="${service.id}" style="width: 5px; height: 5px;"></span>
-                          ${latencyStr}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                `;
-              })
-              .join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  private renderStandardServiceCard(svc: ServiceItem, categoryIcon?: string): string {
-    const health = this.healthDataMap.get(svc.id);
-    const status = health?.status || 'pending';
-    const latencyStr = health ? `${health.latencyMs}ms` : 'Ping';
-    const widgetData = this.widgetDataMap.get(svc.id);
-    const showGraph = svc.widget?.enabled !== false && svc.widget?.showGraph !== false;
-
-    const iconHtml = globalIconResolver.renderIcon({
-      serviceName: svc.name,
-      iconIdentifier: svc.icon,
-      serviceUrl: svc.url,
-      categoryIcon,
-      size: 44,
-    });
-
-    const tagsHtml = (svc.tags || [])
-      .slice(0, 2)
-      .map((t) => `<span class="card-tag">#${this.escapeHtml(t)}</span>`)
-      .join('');
-
-    const shortcutsHtml = (svc.shortcuts || []).length > 0
-      ? `<div class="service-shortcuts-row">
-          ${svc.shortcuts!
-            .map(
-              (sc) =>
-                `<span class="service-shortcut-chip" onclick="window.__dashParkOpenShortcut(event, '${this.escapeHtml(sc.url)}', '${sc.target || '_blank'}')">${this.escapeHtml(sc.name)}</span>`
-            )
-            .join('')}
-        </div>`
-      : '';
-
-    return `
-      <a 
-        href="${this.escapeHtml(svc.url)}" 
-        target="${svc.target || '_blank'}" 
-        rel="noopener noreferrer"
-        class="service-card" 
-        data-service-id="${svc.id}"
-        data-service-name="${this.escapeHtml(svc.name.toLowerCase())}"
-        data-service-desc="${this.escapeHtml((svc.description || '').toLowerCase())}"
-        data-service-tags="${this.escapeHtml((svc.tags || []).join(' ').toLowerCase())}"
-      >
-        ${iconHtml}
-        <div class="service-content">
-          <div class="service-header-row">
-            <h3 class="service-name">${this.escapeHtml(svc.name)}</h3>
-            <div style="display: flex; align-items: center; gap: 0.35rem;">
-              ${showGraph ? `<div class="service-sparkline-box grid-sparkline-slot" data-sparkline="${svc.id}"></div>` : ''}
-              <span class="service-latency-badge ${status}" data-health-badge="${svc.id}">${latencyStr}</span>
-            </div>
-          </div>
-          ${svc.description ? `<p class="service-desc">${this.escapeHtml(svc.description)}</p>` : ''}
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.4rem;">
-            ${tagsHtml ? `<div class="service-tags-row" style="margin-top: 0;">${tagsHtml}</div>` : '<div></div>'}
-            <span 
-              class="service-widget-badge" 
-              data-widget-badge="${svc.id}" 
-              style="${widgetData ? 'display: inline-flex;' : 'display: none;'}"
-            >
-              ${widgetData ? `${widgetData.label ? widgetData.label + ': ' : ''}${widgetData.value}${widgetData.unit || ''}` : ''}
-            </span>
-          </div>
-          ${shortcutsHtml}
-        </div>
-      </a>
-    `;
   }
 
   private showDiagnostics(diagnostics: ErrorDiagnostic[]): void {
@@ -1450,15 +1071,6 @@ class DashParkClient {
       );
       section.style.display = visibleCards.length > 0 ? 'flex' : 'none';
     });
-  }
-
-  private escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
   }
 }
 

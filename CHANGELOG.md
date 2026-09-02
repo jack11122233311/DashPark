@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-09-02
+
+### Refactored & Optimized
+- **Modular Client Architecture**:
+  - Decoupled `src/client/main.ts` into single-responsibility submodules:
+    - `src/client/state/PreferenceStore.ts`: Type-safe `localStorage` state management with fallback guarantees and private browsing safety.
+    - `src/client/dom/DomRenderer.ts`: Pure HTML generator for Grid, Bento, and Compact modes with complete XSS protection.
+    - `src/client/services/HealthPoller.ts`: Periodic health polling, latency history buffers, and outage detection.
+    - `src/client/services/WidgetPoller.ts`: Custom REST widget telemetry polling with leak-free timer teardowns.
+- **Memory & Event Hygiene**:
+  - Eliminated memory leaks by cleaning up polling intervals and event listeners during layout shifts and page switches.
+- **Test Suite Expansion**:
+  - Added unit test suites for `PreferenceStore`, `DomRenderer`, `SpatialNavigator`, and `WidgetPoller`.
+  - Expanded test suite to **78 passing tests across 29 test files (100% pass rate)**.
+
+## [0.7.0] - 2026-09-02
+
+### Added
+- **Zero-Clip Responsive Engine & Viewport Bounds Optimizer**:
+  - Bottom dock clearance padding preventing floating dock overlaps on any screen resolution.
+  - Mobile Bento single-column clamp overriding multi-column tile presets on viewports `<640px`.
+  - Flexbox `min-width: 0;` text ellipsis protection and touch-contained table scrolling.
+- **Real-Time Outage Alert Ribbon & Toast Notifications (`ToastManager.ts`)**:
+  - Non-intrusive floating toast alerts dispatched on service reachability transitions.
+  - Top outage alert ribbon with 1-click outage filtering.
+- **1-Click Quick-Add Service Modal (`QuickAddModal.ts`)**:
+  - Rapid service creation modal with smart IP, port, and URL auto-detection.
+- **Kiosk Multi-Page Auto-Rotation Wallboard (`KioskRotator.ts`)**:
+  - Unattended slideshow cycling across dashboard pages with an animated gradient progress bar and smart pause on interaction.
+- **Category Health Status Rollup Badges**:
+  - Category header health rollup indicators (`🟢 Online`, `🟡 Degraded`, `🔴 Offline`) with persistent collapse state.
+- **Public Shareable Status Endpoint (`/api/v1/status/public`)**:
+  - Sanitized SLA uptime availability metrics without private network exposure.
+- **Spatial Keyboard & Vim Navigation (`SpatialNavigator.ts`)**:
+  - Card navigation via arrow keys and Vim keys (`h j k l`), hotkeys (`Enter`, `s`), and interactive cheatsheet modal (`?`).
+
 ## [0.6.0] - 2026-09-02
 
 ### Added
