@@ -14,6 +14,7 @@ import { dockerRoutes } from './routes/docker.js';
 import { weatherRoutes } from './routes/weather.js';
 import { createAuthRoutes } from './routes/auth.js';
 import { customRoutes } from './routes/custom.js';
+import { rssRoutes } from './routes/rss.js';
 import { globalHealthChecker } from './services/health-checker.js';
 import { APP_VERSION } from '../shared/version.js';
 import type { ServerHealthResponse } from '../shared/types.js';
@@ -41,6 +42,7 @@ export async function setupServer() {
   await fastify.register(widgetRoutes);
   await fastify.register(dockerRoutes);
   await fastify.register(weatherRoutes);
+  await fastify.register(rssRoutes);
   await fastify.register(createAuthRoutes(configLoader));
   await fastify.register(customRoutes);
   await fastify.register(createConfigRoutes(configLoader));

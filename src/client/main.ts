@@ -23,6 +23,10 @@ import { PreferenceStore } from './state/PreferenceStore.js';
 import { DomRenderer } from './dom/DomRenderer.js';
 import { HealthPoller } from './services/HealthPoller.js';
 import { WidgetPoller } from './services/WidgetPoller.js';
+import { SearchEngineBar } from './search/SearchEngineBar.js';
+import { RssWidget } from './widgets/RssWidget.js';
+import { HostStatsCard } from './widgets/HostStatsCard.js';
+import { ScratchpadWidget } from './widgets/ScratchpadWidget.js';
 import { getSvgIcon, SVG_ICONS } from './icons/lucide-svgs.js';
 import { stringify as stringifyYaml } from 'yaml';
 
@@ -58,6 +62,10 @@ export class DashParkClient {
   public spatialNavigator: SpatialNavigator | null = null;
   public healthPoller: HealthPoller | null = null;
   public widgetPoller: WidgetPoller | null = null;
+  public searchEngineBar: SearchEngineBar | null = null;
+  public rssWidget: RssWidget | null = null;
+  public hostStatsCard: HostStatsCard | null = null;
+  public scratchpadWidget: ScratchpadWidget | null = null;
 
   constructor() {
     this.initGlobalIconHandlers();
@@ -114,6 +122,13 @@ export class DashParkClient {
     this.toastManager = new ToastManager();
     this.spatialNavigator = new SpatialNavigator();
     this.widgetPoller = new WidgetPoller();
+    this.searchEngineBar = new SearchEngineBar();
+    this.hostStatsCard = new HostStatsCard();
+    this.hostStatsCard.init();
+    this.rssWidget = new RssWidget();
+    this.rssWidget.init();
+    this.scratchpadWidget = new ScratchpadWidget();
+    this.scratchpadWidget.init();
 
     this.healthPoller = new HealthPoller({
       toastManager: this.toastManager,
@@ -471,6 +486,7 @@ export class DashParkClient {
   private initClock(): void {
     const clockEl = document.getElementById('clock-display');
     const dateEl = document.getElementById('date-display');
+    const subtitleEl = document.getElementById('dashboard-subtitle');
 
     const update = () => {
       const now = new Date();
@@ -478,6 +494,16 @@ export class DashParkClient {
       const is12h = meta?.clockFormat === '12h';
       const showSeconds = meta?.showSeconds !== false;
       const showDate = meta?.showDate !== false;
+
+      const hour = now.getHours();
+      let greeting = 'Good evening';
+      if (hour >= 5 && hour < 12) greeting = 'Good morning';
+      else if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
+      else if (hour >= 22 || hour < 5) greeting = 'Good night';
+
+      if (subtitleEl && (!meta?.subtitle || meta.subtitle === 'Homelab & Server Park')) {
+        subtitleEl.textContent = `${greeting} • Homelab & Server Park`;
+      }
 
       if (clockEl) {
         clockEl.textContent = now.toLocaleTimeString('en-US', {

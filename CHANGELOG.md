@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-09-02
+
+### Added
+- **Live RSS & News Feed Reader (`RssWidget.ts` & `/api/v1/rss`)**:
+  - Ingestion proxy with 5-minute in-memory caching and timeout protection.
+  - Multi-feed tab switching across Hacker News, r/homelab, r/selfhosted, The Verge, Ars Technica, and custom RSS URLs.
+  - Responsive article previews with publication relative time and clean external linkouts.
+- **Direct Multi-Engine Search Bar with Bang Syntax (`SearchEngineBar.ts`)**:
+  - Interactive engine selector chips: Google, DuckDuckGo, Brave, YouTube, Reddit, GitHub, Wikipedia, SearXNG.
+  - Instant bang prefix operator parsing (`!yt`, `!r`, `!gh`, `!w`, `!d`, `!b`, `!sx`).
+- **Comprehensive Server Telemetry Stats Cards (`HostStatsCard.ts`)**:
+  - Real-time gauge progress bars for CPU Load %, Memory RAM (Used/Free/Total GB), and Storage Disk Space (Mount point, Total/Free/Used GB).
+  - Host server metadata displaying hostname, platform, CPU cores, load averages (1m/5m/15m), and uptime.
+- **In-Dashboard Sticky Notes & Scratchpad (`ScratchpadWidget.ts`)**:
+  - Auto-saving sticky notes with debounce for quick IP notes, terminal commands, and to-do lists.
+- **Dynamic Time-of-Day Greeting**:
+  - Automatic contextual greetings ("Good morning", "Good afternoon", "Good evening", "Good night") in the dashboard header.
+
 ## [0.8.0] - 2026-09-02
 
 ### Refactored & Optimized
