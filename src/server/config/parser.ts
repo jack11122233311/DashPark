@@ -141,42 +141,9 @@ export function parseConfig(content: string, isJson: boolean = false): ParseResu
     };
   }
 
-  const validConfig: DashParkConfig = {
-    version: validation.data.version,
-    meta: {
-      title: validation.data.meta.title,
-      subtitle: validation.data.meta.subtitle,
-      logo: validation.data.meta.logo,
-      theme: validation.data.meta.theme,
-      accentColor: validation.data.meta.accentColor,
-      layout: validation.data.meta.layout,
-      showClock: validation.data.meta.showClock,
-      clockFormat: validation.data.meta.clockFormat,
-      searchEngine: validation.data.meta.searchEngine,
-    },
-    categories: validation.data.categories.map((c) => ({
-      id: c.id,
-      name: c.name,
-      icon: c.icon,
-      columns: c.columns,
-      collapsed: c.collapsed,
-      services: c.services.map((s) => ({
-        id: s.id,
-        name: s.name,
-        url: s.url,
-        icon: s.icon,
-        description: s.description,
-        pingUrl: s.pingUrl,
-        target: s.target,
-        tags: s.tags,
-        status: 'pending',
-      })),
-    })),
-  };
-
   return {
     valid: true,
-    config: validConfig,
+    config: validation.data as DashParkConfig,
     diagnostics: [],
     rawYaml: content,
   };

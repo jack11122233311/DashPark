@@ -40,7 +40,6 @@ export function createConfigRoutes(configLoader: ConfigLoader): FastifyPluginAsy
         const targetFileName = isJson ? 'dashpark.json' : 'dashpark.yaml';
         const targetPath = path.join(configDir, targetFileName);
         const backupPath = `${targetPath}.bak`;
-        const tempPath = `${targetPath}.tmp.${Date.now()}`;
 
         try {
           // 3. Create backup of current file if it exists
@@ -52,9 +51,8 @@ export function createConfigRoutes(configLoader: ConfigLoader): FastifyPluginAsy
             }
           }
 
-          // 4. Atomic write via temp file rename
-          fs.writeFileSync(tempPath, content, 'utf-8');
-          fs.renameSync(tempPath, targetPath);
+          // 4. Safe write directly to target file (avoids Windows lock & Docker inode issues with renameSync)
+          fs.writeFileSync(targetPath, content, 'utf-8');
 
           // 5. Reload config loader & health checker
           const updated = configLoader.load();
@@ -71,15 +69,6 @@ export function createConfigRoutes(configLoader: ConfigLoader): FastifyPluginAsy
             config: updated.config,
           });
         } catch (writeErr: unknown) {
-          // Clean up temp file if present
-          if (fs.existsSync(tempPath)) {
-            try {
-              fs.unlinkSync(tempPath);
-            } catch {
-              // Ignore
-            }
-          }
-
           console.error('[DashPark] Failed to write config file:', writeErr);
           return reply.status(500).send({
             valid: false,

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-09-02
+
+### Fixed
+- **Config Persistence Engine (`parser.ts`)**: Resolved critical field stripping bug in `parseConfig()` where manual object reconstruction omitted `pages`, `widget`, `shortcuts`, and `bentoSpan`, causing saved edits to revert.
+- **Single Source of Truth Projection (`schema.ts`)**: Fixed `DashParkConfigSchema` transform so that `categories` is always cleanly derived from `pages`, eliminating stale root category overwrites.
+- **File System Save Reliability (`routes/config.ts`)**: Replaced `fs.renameSync` with direct atomic `fs.writeFileSync` preceded by `.bak` backup, eliminating Windows file lock (`EPERM`) and Docker bind mount inode collisions.
+- **Bidirectional Config Editor Sync (`ConfigEditor.ts`)**: Added real-time tab synchronization (Visual ↔ YAML) and live `input` change listeners.
+
+### Added
+- **In-Editor Category & Service Reordering**: Added `▲ Up` and `▼ Down` visual buttons for quick item ordering in the form editor.
+- **Export & Revert Controls**: Added 1-click "⬇️ Export YAML" and "↩️ Revert" buttons to the Config Editor.
+- **Automated Regression Suite**: Added `tests/config-persistence.test.ts` (36 total passing tests across 11 test suites).
+
 ## [0.3.0] - 2026-09-02
 
 ### Added

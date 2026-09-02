@@ -791,12 +791,19 @@ class DashParkClient {
     if (!this.configResponse?.config) return;
 
     try {
-      const yamlContent = stringifyYaml(this.configResponse.config);
-      await fetch('/api/v1/config/save', {
+      const configToSerialize = JSON.parse(JSON.stringify(this.configResponse.config));
+      if (configToSerialize.pages && configToSerialize.pages.length > 0) {
+        delete configToSerialize.categories;
+      }
+      const yamlContent = stringifyYaml(configToSerialize);
+      const res = await fetch('/api/v1/config/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: yamlContent }),
       });
+      if (res.ok) {
+        await this.loadConfig();
+      }
     } catch (err) {
       console.error('[DashPark] Failed to auto-save layout:', err);
     }

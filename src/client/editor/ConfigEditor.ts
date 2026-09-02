@@ -1,5 +1,5 @@
 import type { DashParkConfig, Category, ServiceItem } from '../../shared/types.js';
-import { stringify as stringifyYaml } from 'yaml';
+import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
 import { HOMELAB_PRESETS } from './presets.js';
 
 export class ConfigEditor {
@@ -9,6 +9,7 @@ export class ConfigEditor {
   private activeTab: 'visual' | 'yaml' | 'guides' = 'visual';
   private validationDebounceTimer: NodeJS.Timeout | null = null;
   private onSavedCallback: () => void;
+  private activeEditingPageId: string = 'home';
 
   constructor(onSaved: () => void) {
     this.onSavedCallback = onSaved;
@@ -48,7 +49,7 @@ export class ConfigEditor {
     const cancelBtn = document.getElementById('editor-cancel-btn');
     cancelBtn?.addEventListener('click', () => this.close());
 
-    // YAML Textarea live validation
+    // YAML Textarea live validation & input
     const yamlTextarea = document.getElementById('yaml-textarea') as HTMLTextAreaElement | null;
     yamlTextarea?.addEventListener('input', () => {
       this.rawYaml = yamlTextarea.value;
@@ -99,19 +100,32 @@ export class ConfigEditor {
     guidesPane?.classList.toggle('active', tab === 'guides');
 
     if (tab === 'visual') {
+      // Sync YAML into Visual Config if modified in YAML tab
+      try {
+        if (this.rawYaml && this.rawYaml.trim()) {
+          const parsed = parseYaml(this.rawYaml);
+          if (parsed && typeof parsed === 'object') {
+            this.currentConfig = parsed;
+          }
+        }
+      } catch {
+        // Keep currentConfig if YAML has syntax error
+      }
       this.renderVisualForm();
     } else if (tab === 'yaml') {
-      // Sync YAML textarea from current visual state if modified
+      // Sync Visual Config into YAML textarea
       if (this.currentConfig) {
-        this.rawYaml = stringifyYaml(this.currentConfig);
+        const configToSerialize = JSON.parse(JSON.stringify(this.currentConfig));
+        if (configToSerialize.pages && configToSerialize.pages.length > 0) {
+          delete configToSerialize.categories;
+        }
+        this.rawYaml = stringifyYaml(configToSerialize);
       }
       this.renderYamlEditor();
     } else if (tab === 'guides') {
       this.renderGuidesView();
     }
   }
-
-  private activeEditingPageId: string = 'home';
 
   private renderVisualForm(): void {
     const container = document.getElementById('visual-categories-list');
@@ -161,14 +175,19 @@ export class ConfigEditor {
 
     container.innerHTML = `
       ${pagesHeaderHtml}
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
         <h3 style="font-size: 1rem; font-weight: 700;">Categories & Services</h3>
-        <button type="button" class="btn-secondary" id="btn-add-category">+ Add Category</button>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <button type="button" class="btn-secondary" id="btn-export-yaml" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" title="Download dashpark.yaml">⬇️ Export YAML</button>
+          <button type="button" class="btn-secondary" id="btn-revert-config" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" title="Revert to last saved configuration">↩️ Revert</button>
+          <button type="button" class="btn-secondary" id="btn-add-category">+ Add Category</button>
+        </div>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 1.25rem;">
         ${activeCategories
-          .map((cat, catIdx) => this.renderCategoryItem(cat, catIdx))
+          .map((cat, catIdx) => this.renderCategoryItem(cat, catIdx, activeCategories.length))
           .join('')}
       </div>
     `;
@@ -238,6 +257,29 @@ export class ConfigEditor {
       }
     });
 
+    // Export YAML
+    document.getElementById('btn-export-yaml')?.addEventListener('click', () => {
+      if (!this.currentConfig) return;
+      const configToSerialize = JSON.parse(JSON.stringify(this.currentConfig));
+      if (configToSerialize.pages && configToSerialize.pages.length > 0) {
+        delete configToSerialize.categories;
+      }
+      const yamlStr = stringifyYaml(configToSerialize);
+      const blob = new Blob([yamlStr], { type: 'text/yaml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'dashpark.yaml';
+      a.click();
+    });
+
+    // Revert changes
+    document.getElementById('btn-revert-config')?.addEventListener('click', async () => {
+      if (confirm('Revert all unsaved changes to the last saved configuration?')) {
+        await this.open();
+        this.showToast('Reverted to saved configuration', 'success');
+      }
+    });
+
     // Hook add category button
     document.getElementById('btn-add-category')?.addEventListener('click', () => {
       const name = prompt('Enter new category name (e.g. Monitoring, Media, Security):');
@@ -268,11 +310,11 @@ export class ConfigEditor {
     return this.currentConfig.categories;
   }
 
-  private renderCategoryItem(cat: Category, catIdx: number): string {
+  private renderCategoryItem(cat: Category, catIdx: number, totalCats: number): string {
     return `
       <div class="visual-category-card" data-cat-index="${catIdx}">
         <div class="visual-category-header">
-          <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; flex-wrap: wrap;">
             <input 
               type="text" 
               class="form-input cat-name-input" 
@@ -290,7 +332,9 @@ export class ConfigEditor {
               style="max-width: 140px; font-family: var(--font-mono); font-size: 0.8125rem;"
             />
           </div>
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <button type="button" class="btn-secondary btn-move-cat-up" data-cat-index="${catIdx}" ${catIdx === 0 ? 'disabled' : ''} title="Move Category Up" style="padding: 0.25rem 0.5rem;">▲</button>
+            <button type="button" class="btn-secondary btn-move-cat-down" data-cat-index="${catIdx}" ${catIdx === totalCats - 1 ? 'disabled' : ''} title="Move Category Down" style="padding: 0.25rem 0.5rem;">▼</button>
             <button type="button" class="btn-secondary btn-add-service" data-cat-index="${catIdx}">+ Add Service</button>
             <button type="button" class="btn-secondary btn-delete-cat" data-cat-index="${catIdx}" style="color: var(--status-offline);" title="Delete Category">✕</button>
           </div>
@@ -301,7 +345,7 @@ export class ConfigEditor {
             cat.services.length === 0
               ? `<div style="padding: 0.75rem; text-align: center; color: var(--text-muted); font-size: 0.8125rem;">No services in this category. Click "+ Add Service" to add one.</div>`
               : cat.services
-                  .map((svc, svcIdx) => this.renderServiceItem(svc, catIdx, svcIdx))
+                  .map((svc, svcIdx) => this.renderServiceItem(svc, catIdx, svcIdx, cat.services.length))
                   .join('')
           }
         </div>
@@ -309,7 +353,7 @@ export class ConfigEditor {
     `;
   }
 
-  private renderServiceItem(svc: ServiceItem, catIdx: number, svcIdx: number): string {
+  private renderServiceItem(svc: ServiceItem, catIdx: number, svcIdx: number, totalServices: number): string {
     const isWidgetEnabled = svc.widget?.enabled !== false;
     const isGraphEnabled = svc.widget?.showGraph !== false;
     const shortcuts = svc.shortcuts || [];
@@ -356,7 +400,10 @@ export class ConfigEditor {
             </select>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <button type="button" class="btn-secondary btn-move-svc-up" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" ${svcIdx === 0 ? 'disabled' : ''} title="Move Service Up" style="padding: 0.25rem 0.45rem;">▲</button>
+            <button type="button" class="btn-secondary btn-move-svc-down" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" ${svcIdx === totalServices - 1 ? 'disabled' : ''} title="Move Service Down" style="padding: 0.25rem 0.45rem;">▼</button>
+            
             <select class="form-input svc-preset-select" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: var(--bg-surface); color: var(--accent-primary); border-color: rgba(99, 102, 241, 0.4);">
               <option value="">⚡ 1-Click Preset...</option>
               ${HOMELAB_PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}
@@ -525,6 +572,56 @@ export class ConfigEditor {
   private attachVisualEventListeners(): void {
     const activeCategories = this.getActiveCategoriesList();
 
+    // Reorder Category Up/Down
+    document.querySelectorAll<HTMLButtonElement>('.btn-move-cat-up').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
+        if (catIdx > 0 && activeCategories[catIdx]) {
+          const item = activeCategories.splice(catIdx, 1)[0];
+          activeCategories.splice(catIdx - 1, 0, item);
+          this.renderVisualForm();
+        }
+      });
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.btn-move-cat-down').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
+        if (catIdx < activeCategories.length - 1 && activeCategories[catIdx]) {
+          const item = activeCategories.splice(catIdx, 1)[0];
+          activeCategories.splice(catIdx + 1, 0, item);
+          this.renderVisualForm();
+        }
+      });
+    });
+
+    // Reorder Service Up/Down
+    document.querySelectorAll<HTMLButtonElement>('.btn-move-svc-up').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(btn.getAttribute('data-svc-index') || '0', 10);
+        const services = activeCategories[catIdx]?.services;
+        if (services && svcIdx > 0) {
+          const item = services.splice(svcIdx, 1)[0];
+          services.splice(svcIdx - 1, 0, item);
+          this.renderVisualForm();
+        }
+      });
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.btn-move-svc-down').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(btn.getAttribute('data-svc-index') || '0', 10);
+        const services = activeCategories[catIdx]?.services;
+        if (services && svcIdx < services.length - 1) {
+          const item = services.splice(svcIdx, 1)[0];
+          services.splice(svcIdx + 1, 0, item);
+          this.renderVisualForm();
+        }
+      });
+    });
+
     // Preset dropdown apply
     document.querySelectorAll<HTMLSelectElement>('.svc-preset-select').forEach((select) => {
       select.addEventListener('change', () => {
@@ -568,23 +665,27 @@ export class ConfigEditor {
       });
     });
 
-    // Category Name & Icon inputs
+    // Category Name & Icon inputs (listen to input & change)
     document.querySelectorAll<HTMLInputElement>('.cat-name-input').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         if (activeCategories[catIdx]) {
           activeCategories[catIdx].name = input.value;
         }
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     document.querySelectorAll<HTMLInputElement>('.cat-icon-input').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         if (activeCategories[catIdx]) {
           activeCategories[catIdx].icon = input.value;
         }
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     // Delete category
@@ -624,35 +725,41 @@ export class ConfigEditor {
       });
     });
 
-    // Service Inputs
+    // Service Inputs (listen to input & change)
     document.querySelectorAll<HTMLInputElement>('.svc-name-input').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         if (activeCategories[catIdx]?.services[svcIdx]) {
           activeCategories[catIdx].services[svcIdx].name = input.value;
         }
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     document.querySelectorAll<HTMLInputElement>('.svc-url-input').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         if (activeCategories[catIdx]?.services[svcIdx]) {
           activeCategories[catIdx].services[svcIdx].url = input.value;
         }
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     document.querySelectorAll<HTMLInputElement>('.svc-icon-input').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         if (activeCategories[catIdx]?.services[svcIdx]) {
           activeCategories[catIdx].services[svcIdx].icon = input.value;
         }
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     // Delete service
@@ -693,7 +800,7 @@ export class ConfigEditor {
     });
 
     document.querySelectorAll<HTMLInputElement>('.svc-widget-url').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         const svc = activeCategories[catIdx]?.services[svcIdx];
@@ -701,11 +808,13 @@ export class ConfigEditor {
           if (!svc.widget) svc.widget = { type: 'stat' };
           svc.widget.url = input.value;
         }
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     document.querySelectorAll<HTMLInputElement>('.svc-widget-key').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         const svc = activeCategories[catIdx]?.services[svcIdx];
@@ -713,11 +822,13 @@ export class ConfigEditor {
           if (!svc.widget) svc.widget = { type: 'stat' };
           svc.widget.jsonPath = input.value;
         }
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     document.querySelectorAll<HTMLInputElement>('.svc-widget-label').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         const svc = activeCategories[catIdx]?.services[svcIdx];
@@ -725,7 +836,9 @@ export class ConfigEditor {
           if (!svc.widget) svc.widget = { type: 'stat' };
           svc.widget.label = input.value;
         }
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     // Shortcuts: add, edit & delete
@@ -743,23 +856,27 @@ export class ConfigEditor {
     });
 
     document.querySelectorAll<HTMLInputElement>('.sc-name-input').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         const scIdx = parseInt(input.getAttribute('data-sc-index') || '0', 10);
         const sc = activeCategories[catIdx]?.services[svcIdx]?.shortcuts?.[scIdx];
         if (sc) sc.name = input.value;
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     document.querySelectorAll<HTMLInputElement>('.sc-url-input').forEach((input) => {
-      input.addEventListener('change', () => {
+      const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         const scIdx = parseInt(input.getAttribute('data-sc-index') || '0', 10);
         const sc = activeCategories[catIdx]?.services[svcIdx]?.shortcuts?.[scIdx];
         if (sc) sc.url = input.value;
-      });
+      };
+      input.addEventListener('input', update);
+      input.addEventListener('change', update);
     });
 
     document.querySelectorAll<HTMLButtonElement>('.btn-delete-sc').forEach((btn) => {
@@ -897,7 +1014,11 @@ export class ConfigEditor {
 
     let payloadContent = this.rawYaml;
     if (this.activeTab === 'visual' && this.currentConfig) {
-      payloadContent = stringifyYaml(this.currentConfig);
+      const configToSerialize = JSON.parse(JSON.stringify(this.currentConfig));
+      if (configToSerialize.pages && configToSerialize.pages.length > 0) {
+        delete configToSerialize.categories;
+      }
+      payloadContent = stringifyYaml(configToSerialize);
     }
 
     try {

@@ -83,27 +83,28 @@ export const DashboardPageSchema = z.object({
 export const DashParkConfigSchema = z.object({
   version: z.string().default('0.3.0'),
   meta: DashboardMetaSchema,
-  categories: z.array(CategorySchema).optional().default([]),
+  categories: z.array(CategorySchema).optional(),
   pages: z.array(DashboardPageSchema).optional(),
 }).transform((cfg) => {
   if (cfg.pages && cfg.pages.length > 0) {
-    const allCategories = cfg.categories && cfg.categories.length > 0
-      ? cfg.categories
-      : cfg.pages.flatMap((p) => p.categories);
+    const allCategories = cfg.pages.flatMap((p) => p.categories);
     return {
       ...cfg,
       categories: allCategories,
+      pages: cfg.pages,
     };
   }
+  const rootCategories = cfg.categories || [];
   return {
     ...cfg,
+    categories: rootCategories,
     pages: [
       {
         id: 'home',
         name: 'Home',
         icon: 'home',
         description: 'Default dashboard overview',
-        categories: cfg.categories || [],
+        categories: rootCategories,
       },
     ],
   };

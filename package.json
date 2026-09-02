@@ -1,6 +1,6 @@
 {
   "name": "dashpark",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Ultra-lightweight, modern, self-hosted dashboard for homelabs and servers",
   "type": "module",
   "author": "jack11122233311",
