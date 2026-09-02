@@ -16,6 +16,8 @@ import { ConfigEditor } from './editor/ConfigEditor.js';
 import { ChartWidget } from './widgets/ChartWidget.js';
 import { PageRouter } from './pages/PageRouter.js';
 import { BentoStudio } from './bento/BentoStudio.js';
+import { FloatingDock } from './dock/FloatingDock.js';
+import { CommandPalette } from './command/CommandPalette.js';
 import { stringify as stringifyYaml } from 'yaml';
 
 // Extend window for global icon fallback callbacks, shortcuts, and bento controls
@@ -62,6 +64,8 @@ class DashParkClient {
   public configEditor: ConfigEditor | null = null;
   public pageRouter: PageRouter | null = null;
   public bentoStudio: BentoStudio | null = null;
+  public floatingDock: FloatingDock | null = null;
+  public commandPalette: CommandPalette | null = null;
 
   constructor() {
     this.initGlobalIconHandlers();
@@ -73,6 +77,8 @@ class DashParkClient {
     this.initPageRouter();
     this.initBentoStudio();
     this.initEditor();
+    this.initFloatingDock();
+    this.initCommandPalette();
     this.initKeyboardShortcuts();
     this.initSystemWidget();
 
@@ -111,6 +117,85 @@ class DashParkClient {
     setInterval(() => this.pollServiceHealth(), 15000);
   }
 
+  private initFloatingDock(): void {
+    this.floatingDock = new FloatingDock({
+      onLayoutSelect: (layout) => this.setLayout(layout),
+      onThemeSelect: (theme) => {
+        this.applyTheme(theme);
+        try {
+          localStorage.setItem('dashpark_theme', theme);
+        } catch {
+          // Ignore
+        }
+      },
+      onOpenSettings: async () => {
+        const ok = await this.challengePin();
+        if (ok) {
+          this.configEditor?.open();
+        }
+      },
+      onOpenCommandPalette: () => this.commandPalette?.open(),
+      onToggleBentoCustomize: async () => {
+        const ok = await this.challengePin();
+        if (!ok) return;
+
+        const isEditing = this.bentoStudio?.toggleEditMode();
+        this.floatingDock?.setBentoEditing(!!isEditing);
+        this.renderContent();
+
+        if (!isEditing) {
+          await this.saveCurrentConfig();
+        }
+      },
+      getCurrentLayout: () => this.currentLayout,
+      getCurrentTheme: () => this.currentTheme,
+    });
+    this.floatingDock.init();
+  }
+
+  private initCommandPalette(): void {
+    this.commandPalette = new CommandPalette({
+      getConfig: () => this.configResponse?.config || null,
+      onLayoutSelect: (layout) => this.setLayout(layout),
+      onThemeSelect: (theme) => {
+        this.applyTheme(theme);
+        try {
+          localStorage.setItem('dashpark_theme', theme);
+        } catch {
+          // Ignore
+        }
+      },
+      onOpenSettings: async () => {
+        const ok = await this.challengePin();
+        if (ok) {
+          this.configEditor?.open();
+        }
+      },
+      onPageSelect: (pageId) => {
+        this.pageRouter?.setActivePageId(pageId);
+        this.renderContent();
+      },
+      onToggleBentoCustomize: async () => {
+        const ok = await this.challengePin();
+        if (!ok) return;
+
+        const isEditing = this.bentoStudio?.toggleEditMode();
+        this.floatingDock?.setBentoEditing(!!isEditing);
+        this.renderContent();
+
+        if (!isEditing) {
+          await this.saveCurrentConfig();
+        }
+      },
+    });
+
+    const searchCmdBadge = document.getElementById('search-cmd-badge');
+    searchCmdBadge?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.commandPalette?.open();
+    });
+  }
+
   private initPageRouter(): void {
     this.pageRouter = new PageRouter((_pageId) => {
       this.renderContent();
@@ -135,6 +220,7 @@ class DashParkClient {
       const isEditing = this.bentoStudio?.toggleEditMode();
       editBentoBtn.classList.toggle('active', !!isEditing);
       editBentoBtn.innerHTML = isEditing ? '<span>💾 Done (Save)</span>' : '<span>✏️ Customize</span>';
+      this.floatingDock?.setBentoEditing(!!isEditing);
       
       this.renderContent();
 
@@ -432,7 +518,8 @@ class DashParkClient {
       // Ignore
     }
     this.updateLayoutButtons();
-    if (this.configResponse?.config?.categories) {
+    this.floatingDock?.setLayout(layout);
+    if (this.configResponse?.config?.categories || this.configResponse?.config?.pages) {
       this.renderContent();
     }
   }
@@ -468,15 +555,18 @@ class DashParkClient {
     if (themeSelect && themeSelect.value !== theme) {
       themeSelect.value = theme;
     }
+    this.floatingDock?.setTheme(theme);
   }
 
   private initKeyboardShortcuts(): void {
     const searchInput = document.getElementById('search-input') as HTMLInputElement | null;
     window.addEventListener('keydown', (e) => {
-      if (e.key === '/' && document.activeElement !== searchInput && !document.querySelector('dialog[open]')) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        searchInput?.focus();
-        searchInput?.select();
+        this.commandPalette?.open();
+      } else if (e.key === '/' && document.activeElement !== searchInput && !document.querySelector('dialog[open]')) {
+        e.preventDefault();
+        this.commandPalette?.open();
       } else if (e.key === 'Escape' && document.activeElement === searchInput) {
         if (searchInput) {
           searchInput.value = '';
@@ -793,6 +883,8 @@ class DashParkClient {
       this.renderCategorizedLayout(categories, container);
     }
 
+    this.floatingDock?.setLayout(this.currentLayout);
+    this.commandPalette?.rebuildIndex();
     this.filterServices();
   }
 

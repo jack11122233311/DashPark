@@ -1359,3 +1359,514 @@ body.has-custom-wallpaper .compact-list-wrapper {
   box-shadow: var(--shadow-lg);
 }
 
+/* ==============================================================================
+   🛸 Modern Glass Floating Action Dock
+   ============================================================================== */
+
+.floating-action-dock {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  pointer-events: auto;
+  transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+.dock-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-pill);
+  box-shadow: 
+    0 12px 36px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+.dock-segment-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-pill);
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dock-pill-indicator {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  background: var(--accent-gradient);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.25s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dock-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 2;
+  transition: color var(--transition-fast);
+  user-select: none;
+}
+
+.dock-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dock-btn:hover {
+  color: var(--text-primary);
+}
+
+.dock-btn.active {
+  color: #ffffff;
+}
+
+.dock-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 0.15rem;
+}
+
+.dock-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.dock-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.dock-action-btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+}
+
+.dock-edit-btn {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.dock-edit-btn:hover {
+  background: var(--accent-hover);
+  color: #ffffff;
+}
+
+.dock-kbd {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  padding: 0.1rem 0.35rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+/* Theme Flyout Popover */
+.dock-popover-anchor {
+  position: relative;
+}
+
+.dock-theme-popover {
+  position: absolute;
+  bottom: calc(100% + 0.75rem);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px) scale(0.96);
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: 0.5rem;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 100;
+  min-width: 160px;
+}
+
+.dock-theme-popover.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.dock-theme-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dock-theme-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.65rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.dock-theme-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.dock-theme-option.active {
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--accent-primary);
+}
+
+.theme-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+/* ==============================================================================
+   ⚡ Universal Spotlight Command Palette
+   ============================================================================== */
+
+.command-palette-dialog {
+  border: none;
+  background: transparent;
+  padding: 0;
+  max-width: 640px;
+  width: 92vw;
+  margin: 10vh auto auto auto;
+  outline: none;
+}
+
+.command-palette-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.cmd-modal-wrapper {
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  box-shadow: 
+    0 25px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cmd-search-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cmd-search-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.cmd-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  outline: none;
+  font-family: inherit;
+}
+
+.cmd-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.cmd-esc-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  padding: 0.15rem 0.45rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.cmd-results-viewport {
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cmd-group-header {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.cmd-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.cmd-item:hover, .cmd-item.selected {
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.cmd-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.cmd-item-icon {
+  font-size: 1rem;
+  width: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cmd-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cmd-item-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmd-item-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmd-item.selected .cmd-item-title {
+  color: #ffffff;
+}
+
+.cmd-item.selected .cmd-item-subtitle {
+  color: #cbd5e1;
+}
+
+.cmd-item-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  padding: 0.1rem 0.35rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.cmd-item:hover .cmd-item-badge, .cmd-item.selected .cmd-item-badge {
+  opacity: 1;
+}
+
+.cmd-empty-state {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cmd-empty-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.cmd-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1.25rem;
+  background: rgba(0, 0, 0, 0.25);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.cmd-footer-hints {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.cmd-footer-hints kbd {
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  margin-right: 0.2rem;
+}
+
+.cmd-footer-brand {
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+/* ==============================================================================
+   💎 Luminous Glassmorphism 2.0 & Dynamic Beacon Pulse
+   ============================================================================== */
+
+@keyframes pulse-emerald {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes pulse-amber {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+.status-dot.online, .service-status-dot.online {
+  background: var(--status-online);
+  animation: pulse-emerald 2.2s infinite;
+}
+
+.status-dot.degraded, .service-status-dot.degraded {
+  background: var(--status-degraded);
+  animation: pulse-amber 2.2s infinite;
+}
+
+/* Directional gradient borders on cards */
+.service-card, .bento-card {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.service-card:hover, .bento-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 
+    0 12px 28px -4px rgba(0, 0, 0, 0.45),
+    0 0 20px -2px rgba(99, 102, 241, 0.25) !important;
+}
+
+/* Search bar Command Palette trigger badge */
+.search-shortcut {
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all var(--transition-fast);
+}
+
+.search-shortcut:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+}
+
+/* Mobile Responsiveness for Dock */
+@media (max-width: 768px) {
+  .floating-action-dock {
+    bottom: 1rem;
+    width: 90vw;
+  }
+  .dock-wrapper {
+    justify-content: space-around;
+    padding: 0.3rem 0.5rem;
+  }
+  .dock-btn-label {
+    display: none;
+  }
+}
+

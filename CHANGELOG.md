@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-09-02
+
+### Added
+- **Apple-Style Floating Action Dock (`FloatingDock.ts`)**:
+  - Uncluttered viewport with a sleek floating glass pill dock pinned to bottom center with auto-hiding smart opacity.
+  - Smooth spring-animated segmented layout switcher (`Grid`, `Bento`, `List`) with sliding pill indicator.
+  - Interactive Theme Flyout popover with live color swatches (Dark, Nord, Dracula, Catppuccin, Cyberpunk, Glass, Light).
+  - Quick-action buttons for Spotlight Search (`⌘K`), Bento Tile Customizer (`✏️ Customize`), and Settings Hub (`⚙️ Edit`).
+- **Universal Spotlight Command Palette (`CommandPalette.ts`)**:
+  - Global `Ctrl+K` / `⌘K` / `/` / header search badge trigger opening a high-performance spotlight dialog.
+  - Universal indexing and instant fuzzy search across all services, shortcuts, dashboard pages, theme palettes, layout modes, and system settings.
+  - Full keyboard navigation (`ArrowUp`, `ArrowDown`, `Enter`, `Escape`) with instant action execution.
+- **Ambient Glow Glassmorphism 2.0 & Breathing Beacons**:
+  - Refined luminous border gradients (`rgba(255, 255, 255, 0.08)` to `rgba(255, 255, 255, 0.03)`).
+  - Fluid elevation lift on card hover with dynamic multi-layer soft drop shadows.
+  - Dynamic breathing pulse animations on latency status beacons (`@keyframes pulse-emerald` and `@keyframes pulse-amber`).
+- **2-Column Split-Pane Master-Detail Settings Hub (`ConfigEditor.ts`)**:
+  - Transformed the monolithic settings modal into a modern 2-column split-pane master-detail view.
+  - Categorized sidebar navigation across 11 dedicated setting panels: Identity, Appearance, Wallpaper, Weather, Security & PIN, Outage Alerts, Migration Importer, Custom CSS & Icons, Snapshot History, Clock & Search, and Factory Reset.
+- **Automated Test Coverage**:
+  - Added unit test suites for `FloatingDock` and `CommandPalette`.
+  - Expanded test suite to **67 passing tests across 21 test files (100% pass rate)**.
+
 ## [0.5.0] - 2026-09-02
 
 ### Added

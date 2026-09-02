@@ -634,10 +634,27 @@ export class ConfigEditor {
     const webhooks = meta.alerts?.webhooks || [];
 
     container.innerHTML = `
-      <div class="settings-container">
+      <div class="settings-split-wrapper">
+        <!-- Left Sidebar Navigation -->
+        <nav class="settings-nav-sidebar" id="settings-nav-sidebar" aria-label="Settings Categories">
+          <button type="button" class="settings-nav-btn active" data-target-panel="panel-identity">🏠 Identity</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-appearance">🎨 Theme & Accent</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-wallpaper">🖼️ Wallpaper Studio</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-weather">🌤️ Weather Telemetry</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-security">🔒 PIN & Kiosk</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-webhooks">🔔 Outage Webhooks</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-importer">📥 1-Click Importer</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-custom">🖌️ Custom CSS & Icons</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-snapshots">🗂️ Snapshot History</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-clock">⏰ Clock & Search</button>
+          <button type="button" class="settings-nav-btn" data-target-panel="panel-reset" style="color: var(--status-offline);">🔄 Factory Reset</button>
+        </nav>
+
+        <!-- Right Panels Viewport -->
+        <div class="settings-panels-viewport" id="settings-panels-viewport">
         
         <!-- 1. General Dashboard Identity -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-identity">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🏠</span>
             <div>
@@ -668,7 +685,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 2. Appearance & Accent Color -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-appearance">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🎨</span>
             <div>
@@ -707,7 +724,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 3. Wallpaper Studio & Glassmorphism -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-wallpaper">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🖼️</span>
             <div>
@@ -746,7 +763,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 4. Weather & Environmental Telemetry -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-weather">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🌤️</span>
             <div>
@@ -784,7 +801,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 5. PIN Protection & Kiosk Mode -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-security">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🔒</span>
             <div>
@@ -812,7 +829,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 6. Outage Alert Webhooks -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-webhooks">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🔔</span>
             <div>
@@ -855,7 +872,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 7. 1-Click Multi-Dashboard Migration Importer -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-importer">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">📥</span>
             <div>
@@ -875,7 +892,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 8. Custom CSS & Custom Icon Uploader -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-custom">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🎨</span>
             <div>
@@ -901,7 +918,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 9. Versioned Snapshots & Rollback History -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-snapshots">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🗂️</span>
             <div>
@@ -931,7 +948,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 10. Clock & Search Engine -->
-        <div class="settings-card">
+        <div class="settings-card settings-panel-section" id="panel-clock">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">⏰</span>
             <div>
@@ -970,7 +987,7 @@ export class ConfigEditor {
         </div>
 
         <!-- 11. Reset & Danger Zone -->
-        <div class="settings-card" style="border-color: rgba(239, 68, 68, 0.3);">
+        <div class="settings-card settings-panel-section" id="panel-reset" style="border-color: rgba(239, 68, 68, 0.3);">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🔄</span>
             <div>
@@ -988,7 +1005,8 @@ export class ConfigEditor {
           </div>
         </div>
 
-      </div>
+        </div> <!-- /settings-panels-viewport -->
+      </div> <!-- /settings-split-wrapper -->
     `;
 
     this.attachSettingsEventListeners();
@@ -997,6 +1015,22 @@ export class ConfigEditor {
   private attachSettingsEventListeners(): void {
     if (!this.currentConfig) return;
     const meta = this.currentConfig.meta;
+
+    // Sidebar Category Navigation
+    document.querySelectorAll<HTMLButtonElement>('.settings-nav-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target-panel');
+        if (!targetId) return;
+
+        document.querySelectorAll('.settings-nav-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const targetPanel = document.getElementById(targetId);
+        if (targetPanel) {
+          targetPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
 
     // Title & Subtitle & Layout
     document.getElementById('set-meta-title')?.addEventListener('input', (e) => {

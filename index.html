@@ -41,83 +41,26 @@
             type="text" 
             id="search-input" 
             class="search-input" 
-            placeholder="Search services or press '/' to focus..." 
+            placeholder="Search services or press ⌘K for command palette..." 
             autocomplete="off" 
             spellcheck="false"
           />
-          <kbd class="search-shortcut">/</kbd>
+          <button type="button" id="search-cmd-badge" class="search-shortcut" title="Open Command Palette (Ctrl+K)">⌘K</button>
         </div>
       </div>
 
       <div class="header-right">
-        <!-- 3 Layout Mode Switchers -->
-        <div class="layout-switcher" id="layout-switcher" role="group" aria-label="Layout Modes">
-          <button type="button" class="layout-btn active" data-layout="grid" id="btn-layout-grid" title="Categorized Grid (Ctrl+1)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect width="7" height="7" x="3" y="3" rx="1" />
-              <rect width="7" height="7" x="14" y="3" rx="1" />
-              <rect width="7" height="7" x="14" y="14" rx="1" />
-              <rect width="7" height="7" x="3" y="14" rx="1" />
-            </svg>
-          </button>
-          <button type="button" class="layout-btn" data-layout="bento" id="btn-layout-bento" title="Bento Grid (Ctrl+2)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect width="18" height="7" x="3" y="3" rx="1" />
-              <rect width="8" height="9" x="3" y="12" rx="1" />
-              <rect width="8" height="9" x="13" y="12" rx="1" />
-            </svg>
-          </button>
-          <button type="button" class="layout-btn" data-layout="compact" id="btn-layout-compact" title="Compact List (Ctrl+3)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="8" x2="21" y1="6" y2="6" />
-              <line x1="8" x2="21" y1="12" y2="12" />
-              <line x1="8" x2="21" y1="18" y2="18" />
-              <line x1="3" x2="3.01" y1="6" y2="6" />
-              <line x1="3" x2="3.01" y1="12" y2="12" />
-              <line x1="3" x2="3.01" y1="18" y2="18" />
-            </svg>
-          </button>
-          <button type="button" id="btn-edit-bento" class="layout-btn btn-customize-bento" style="display: none;" title="Customize Bento Tiles">
-            <span>✏️ Customize</span>
-          </button>
-        </div>
-
-        <!-- Theme Selector -->
-        <div class="theme-selector-wrapper">
-          <select id="theme-selector" class="theme-dropdown" aria-label="Theme Selector">
-            <option value="dark">🌙 Dark</option>
-            <option value="nord">❄️ Nord</option>
-            <option value="dracula">🧛 Dracula</option>
-            <option value="catppuccin">🐱 Catppuccin</option>
-            <option value="cyberpunk">⚡ Cyberpunk</option>
-            <option value="glass">💎 Glass</option>
-            <option value="light">☀️ Light</option>
-          </select>
-          <svg class="theme-selector-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-        </div>
-
-        <!-- Edit Config Button -->
-        <button type="button" id="btn-open-editor" class="btn-secondary" title="Edit Dashboard (Ctrl+E)" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.45rem 0.75rem;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
-            <path d="M12 20h9" />
-            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-          </svg>
-          <span>Edit</span>
-        </button>
-
-        <!-- Server Health Status -->
-        <div class="status-pill" id="server-status-pill">
-          <span class="status-dot online"></span>
-          <span id="server-stats-text">v0.0.1 • Connecting...</span>
-        </div>
-
         <!-- Weather Telemetry Pill -->
         <div class="weather-container" id="weather-container" style="display: none;" title="Live Weather Telemetry">
           <span id="weather-icon" style="font-size: 1rem;">🌤️</span>
           <span id="weather-temp" style="font-weight: 700; font-family: var(--font-mono); font-size: 0.8125rem;">--°C</span>
           <span id="weather-condition" style="font-size: 0.75rem; color: var(--text-muted);">Weather</span>
+        </div>
+
+        <!-- Server Health Status -->
+        <div class="status-pill" id="server-status-pill">
+          <span class="status-dot online"></span>
+          <span id="server-stats-text">Connecting...</span>
         </div>
 
         <!-- Clock & Date -->
@@ -247,6 +190,39 @@
         </div>
       </div>
     </dialog>
+
+    <!-- Universal Spotlight Command Palette Dialog -->
+    <dialog id="command-palette-dialog" class="command-palette-dialog">
+      <div class="cmd-modal-wrapper">
+        <div class="cmd-search-header">
+          <svg class="cmd-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input 
+            type="text" 
+            id="command-palette-input" 
+            class="cmd-search-input" 
+            placeholder="Type a command, search services, pages, or themes..." 
+            autocomplete="off" 
+            spellcheck="false"
+          />
+          <kbd class="cmd-esc-badge">ESC</kbd>
+        </div>
+        <div id="command-palette-results" class="cmd-results-viewport"></div>
+        <div class="cmd-footer-bar">
+          <div class="cmd-footer-hints">
+            <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+            <span><kbd>↵</kbd> Select</span>
+            <span><kbd>ESC</kbd> Dismiss</span>
+          </div>
+          <span class="cmd-footer-brand">DashPark Spotlight</span>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Modern Glass Floating Action Dock -->
+    <nav id="floating-action-dock" class="floating-action-dock" aria-label="Action Dock"></nav>
 
     <!-- Footer -->
     <footer class="dashboard-footer">
