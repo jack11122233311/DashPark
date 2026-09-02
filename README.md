@@ -4,7 +4,7 @@
 
 **The ultra-lightweight, resilient, and modern self-hosted dashboard for homelabs and servers.**
 
-[![Version](https://img.shields.io/badge/version-v0.2.0-indigo.svg)](https://github.com/jack11122233311/DashPark/releases)
+[![Version](https://img.shields.io/badge/version-v0.3.0-indigo.svg)](https://github.com/jack11122233311/DashPark/releases)
 [![Docker](https://img.shields.io/badge/docker-multi--arch-blue.svg)](https://github.com/jack11122233311/DashPark/pkgs/container/dashpark)
 [![Architectures](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-orange.svg)](#multi-arch-support)
 [![Memory](https://img.shields.io/badge/memory-%3C18MB_RAM-emerald.svg)](#benchmarks)
@@ -19,6 +19,8 @@
 ## 🌟 Features
 
 - ⚡ **Ultra-Lightweight**: Runs on **<18MB RAM** with sub-60ms cold start times. Optimized for Raspberry Pi 3/4/5 and low-spec SBCs.
+- 🍱 **Bento Drag-and-Drop Studio**: Live visual customization mode (`✏️ Customize`) to drag, reorder, and resize tiles (`1x1`, `2x1 Wide`, `1x2 Tall`, `2x2 Hero`) with auto-persistence.
+- 📑 **Multi-Page Dashboard Engine**: Tabbed page router (`#page=media`, `#page=infra`) supporting infinite dedicated pages for media, infrastructure, smart home, and security.
 - 🐳 **Multi-Arch Docker Ready**: Pre-packaged for `linux/amd64` and `linux/arm64` (aarch64) with non-root security (`USER node`).
 - 📊 **View-Adaptive & Toggle-able Stats**: Dynamic live telemetry adapts to the current view — large live uPlot charts in Bento/Tile view, compact sparklines in Grid view, and dense status pills in List view.
 - ⚡ **1-Click Presets Library**: Built-in instant recipes for Emby, Jellyfin, Plex, Pi-hole, AdGuard, Sonarr, Radarr, Home Assistant, Proxmox, TrueNAS, and Uptime Kuma.
@@ -27,12 +29,12 @@
 - 🛡️ **Zero-Crash Resilient Config Engine**: Misplaced YAML indentations or syntax mistakes won't crash your server or show a blank screen. DashPark catches syntax errors and displays real-time line/column visual repair diagnostics in the UI.
 - 🎨 **3 Switchable Layout Modes**:
   - **Categorized Grid (`Ctrl+1`)**: Traditional clean category columns with collapsible accordions.
-  - **Bento Grid (`Ctrl+2`)**: Modern modular card grid with prominent featured hero cards.
+  - **Bento Grid (`Ctrl+2`)**: Modern modular card grid with customizable tile dimensions and hero slots.
   - **Compact List (`Ctrl+3`)**: High-density table view with sortable columns for large homelabs (50+ services).
 - 🎭 **7 Theme Presets**: Dark (Default), Nord, Dracula, Catppuccin, Cyberpunk, Glass, and Light with dynamic CSS variables.
 - 🎯 **Smart 6-Tier Icon Resolver**: Cascades through Local `/icons/` ➔ `walkxcode/dashboard-icons` ➔ Simple Icons ➔ Backend Favicon Proxy ➔ Lucide Category Vectors ➔ Initials Badges with zero layout shift.
 - 💓 **Async Health Monitor**: Non-blocking background worker with self-signed SSL tolerance that measures live latency (`ms`) and endpoint reachability.
-- 🛠️ **In-App Config Editor (`Ctrl+E`)**: Add, edit, or reorder services visually with live "Test Ping", or edit raw YAML with real-time syntax linting and automatic `.bak` backups.
+- 🛠️ **In-App Config Editor (`Ctrl+E`)**: Visual form editor with Page Manager, Live "Test Ping", or raw YAML editing with real-time syntax linting and automatic `.bak` backups.
 
 ---
 

@@ -60,6 +60,7 @@ export const ServiceItemSchema = z.object({
   tags: z.array(z.string()).optional().default([]),
   widget: ServiceWidgetSchema,
   shortcuts: z.array(ServiceShortcutSchema).optional().default([]),
+  bentoSpan: z.enum(['1x1', '2x1', '1x2', '2x2']).optional().default('1x1'),
 });
 
 export const CategorySchema = z.object({
@@ -71,10 +72,41 @@ export const CategorySchema = z.object({
   services: z.array(ServiceItemSchema).default([]),
 });
 
-export const DashParkConfigSchema = z.object({
-  version: z.string().default('0.0.1'),
-  meta: DashboardMetaSchema,
+export const DashboardPageSchema = z.object({
+  id: z.string().min(1, 'Page ID is required'),
+  name: z.string().min(1, 'Page name is required'),
+  icon: z.string().optional().default('home'),
+  description: z.string().optional().default(''),
   categories: z.array(CategorySchema).default([]),
+});
+
+export const DashParkConfigSchema = z.object({
+  version: z.string().default('0.3.0'),
+  meta: DashboardMetaSchema,
+  categories: z.array(CategorySchema).optional().default([]),
+  pages: z.array(DashboardPageSchema).optional(),
+}).transform((cfg) => {
+  if (cfg.pages && cfg.pages.length > 0) {
+    const allCategories = cfg.categories && cfg.categories.length > 0
+      ? cfg.categories
+      : cfg.pages.flatMap((p) => p.categories);
+    return {
+      ...cfg,
+      categories: allCategories,
+    };
+  }
+  return {
+    ...cfg,
+    pages: [
+      {
+        id: 'home',
+        name: 'Home',
+        icon: 'home',
+        description: 'Default dashboard overview',
+        categories: cfg.categories || [],
+      },
+    ],
+  };
 });
 
 export type ParsedConfig = z.infer<typeof DashParkConfigSchema>;

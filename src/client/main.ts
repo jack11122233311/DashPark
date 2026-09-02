@@ -14,14 +14,19 @@ import { getSvgIcon, SVG_ICONS } from './icons/lucide-svgs.js';
 import { SystemWidget } from './widgets/SystemWidget.js';
 import { ConfigEditor } from './editor/ConfigEditor.js';
 import { ChartWidget } from './widgets/ChartWidget.js';
+import { PageRouter } from './pages/PageRouter.js';
+import { BentoStudio } from './bento/BentoStudio.js';
+import { stringify as stringifyYaml } from 'yaml';
 
-// Extend window for global icon fallback callbacks and shortcuts
+// Extend window for global icon fallback callbacks, shortcuts, and bento controls
 declare global {
   interface Window {
     __dashParkIconLoaded?: (img: HTMLImageElement) => void;
     __dashParkIconError?: (img: HTMLImageElement) => void;
     __dashParkToggleCategory?: (id: string) => void;
     __dashParkOpenShortcut?: (e: MouseEvent, url: string, target?: string) => void;
+    __dashParkCycleTileSpan?: (e: MouseEvent, serviceId: string) => void;
+    __dashParkCycleTelemetry?: (e: MouseEvent, serviceId: string) => void;
   }
 }
 
@@ -55,6 +60,8 @@ class DashParkClient {
 
   public systemWidget: SystemWidget | null = null;
   public configEditor: ConfigEditor | null = null;
+  public pageRouter: PageRouter | null = null;
+  public bentoStudio: BentoStudio | null = null;
 
   constructor() {
     this.initGlobalIconHandlers();
@@ -63,6 +70,8 @@ class DashParkClient {
     this.initSearch();
     this.initLayoutSwitcher();
     this.initThemeSelector();
+    this.initPageRouter();
+    this.initBentoStudio();
     this.initEditor();
     this.initKeyboardShortcuts();
     this.initSystemWidget();
@@ -73,11 +82,64 @@ class DashParkClient {
       window.open(url, target || '_blank');
     };
 
+    window.__dashParkCycleTileSpan = (e: MouseEvent, serviceId: string) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const service = this.findServiceById(serviceId);
+      if (service && this.bentoStudio) {
+        this.bentoStudio.cycleTileSpan(service);
+        this.renderContent();
+        this.saveCurrentConfig();
+      }
+    };
+
+    window.__dashParkCycleTelemetry = (e: MouseEvent, serviceId: string) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const service = this.findServiceById(serviceId);
+      if (service && this.bentoStudio) {
+        this.bentoStudio.cycleTelemetryMode(service);
+        this.renderContent();
+        this.saveCurrentConfig();
+      }
+    };
+
     this.loadData();
 
     // Poll server health & service statuses periodically
     setInterval(() => this.updateServerHealth(), 10000);
     setInterval(() => this.pollServiceHealth(), 15000);
+  }
+
+  private initPageRouter(): void {
+    this.pageRouter = new PageRouter((_pageId) => {
+      this.renderContent();
+    });
+  }
+
+  private initBentoStudio(): void {
+    this.bentoStudio = new BentoStudio(
+      (reorderedServices) => {
+        this.updateActivePageServices(reorderedServices);
+      },
+      async () => {
+        await this.saveCurrentConfig();
+      }
+    );
+
+    const editBentoBtn = document.getElementById('btn-edit-bento');
+    editBentoBtn?.addEventListener('click', async () => {
+      if (!this.bentoStudio) return;
+      const isEditing = this.bentoStudio.toggleEditMode();
+      editBentoBtn.classList.toggle('active', isEditing);
+      editBentoBtn.innerHTML = isEditing ? '<span>💾 Done (Save)</span>' : '<span>✏️ Customize</span>';
+      
+      this.renderContent();
+
+      if (!isEditing) {
+        await this.saveCurrentConfig();
+      }
+    });
   }
 
   private initSystemWidget(): void {
@@ -431,9 +493,10 @@ class DashParkClient {
 
       if (data.config) {
         this.applyMeta(data.config.meta);
-        this.renderTagFilterBar(data.config.categories);
+        const categories = this.pageRouter?.getActiveCategories(data.config) || data.config.categories || [];
+        this.renderTagFilterBar(categories);
         this.renderContent();
-        this.startWidgetPollers(data.config.categories);
+        this.startWidgetPollers(categories);
       }
     } catch (err) {
       console.error('[DashPark] Failed to load config:', err);
@@ -500,14 +563,24 @@ class DashParkClient {
   }
 
   private renderContent(): void {
-    const categories = this.configResponse?.config?.categories || [];
+    const config = this.configResponse?.config;
+    const pageTabsContainer = document.getElementById('page-tabs-bar');
+    this.pageRouter?.renderPageTabs(config || null, pageTabsContainer);
+
+    const categories = this.pageRouter?.getActiveCategories(config || null) || [];
     const container = document.getElementById('categories-container');
+    const editBentoBtn = document.getElementById('btn-edit-bento');
+
+    if (editBentoBtn) {
+      editBentoBtn.style.display = this.currentLayout === 'bento' ? 'inline-flex' : 'none';
+    }
+
     if (!container) return;
 
     if (categories.length === 0) {
       container.innerHTML = `
         <div class="loading-state">
-          <p>No categories or services defined in your configuration.</p>
+          <p>No categories or services defined in this page.</p>
         </div>
       `;
       return;
@@ -562,7 +635,7 @@ class DashParkClient {
     };
   }
 
-  /* 2. Bento Grid Layout */
+  /* 2. Bento Grid Layout & Studio */
   private renderBentoLayout(categories: Category[], container: HTMLElement): void {
     const allServices: Array<{ service: ServiceItem; categoryName: string; categoryIcon?: string }> = [];
     categories.forEach((cat) => {
@@ -571,16 +644,20 @@ class DashParkClient {
       });
     });
 
+    const isEditMode = this.bentoStudio?.isEditMode || false;
+    container.classList.toggle('bento-edit-mode', isEditMode);
+
     container.innerHTML = `
-      <div class="layout-bento-container">
+      <div class="layout-bento-container ${isEditMode ? 'bento-edit-mode' : ''}">
         ${allServices
-          .map(({ service, categoryName, categoryIcon }, index) => {
-            const isHero = index === 0 || index === 4 || index === 7;
+          .map(({ service, categoryName, categoryIcon }) => {
             const health = this.healthDataMap.get(service.id);
             const status = health?.status || 'pending';
             const latencyStr = health ? `${health.latencyMs}ms` : 'Ping';
             const widgetData = this.widgetDataMap.get(service.id);
             const showGraph = service.widget?.enabled !== false && service.widget?.showGraph !== false;
+            const spanClass = `span-${service.bentoSpan || '1x1'}`;
+            const isHero = service.bentoSpan === '2x1' || service.bentoSpan === '2x2';
 
             const iconHtml = globalIconResolver.renderIcon({
               serviceName: service.name,
@@ -601,16 +678,29 @@ class DashParkClient {
                 </div>`
               : '';
 
+            const editToolbarHtml = isEditMode
+              ? `<div class="bento-tile-toolbar">
+                  <button type="button" class="bento-tile-btn" onclick="window.__dashParkCycleTileSpan(event, '${service.id}')" title="Cycle tile size">
+                    📐 ${service.bentoSpan || '1x1'}
+                  </button>
+                  <button type="button" class="bento-tile-btn" onclick="window.__dashParkCycleTelemetry(event, '${service.id}')" title="Toggle graph/stat display">
+                    📊 ${showGraph ? 'Graph' : service.widget?.enabled !== false ? 'Stat' : 'Off'}
+                  </button>
+                </div>`
+              : '';
+
             return `
               <a 
-                href="${this.escapeHtml(service.url)}" 
+                href="${isEditMode ? 'javascript:void(0)' : this.escapeHtml(service.url)}" 
                 target="${service.target || '_blank'}" 
                 rel="noopener noreferrer"
-                class="bento-card ${isHero ? 'hero-card' : ''}"
+                class="bento-card ${spanClass}"
+                data-service-id="${service.id}"
                 data-service-name="${this.escapeHtml(service.name.toLowerCase())}"
                 data-service-desc="${this.escapeHtml((service.description || '').toLowerCase())}"
                 data-service-tags="${this.escapeHtml((service.tags || []).join(' ').toLowerCase())}"
               >
+                ${editToolbarHtml}
                 <div class="bento-top-row">
                   ${iconHtml}
                   <div class="bento-meta">
@@ -640,6 +730,76 @@ class DashParkClient {
           .join('')}
       </div>
     `;
+
+    if (isEditMode && this.bentoStudio) {
+      this.bentoStudio.attachDragAndDrop(container, allServices);
+    }
+  }
+
+  public findServiceById(serviceId: string): ServiceItem | null {
+    if (!this.configResponse?.config) return null;
+    const config = this.configResponse.config;
+
+    // Check in pages if present
+    if (config.pages && config.pages.length > 0) {
+      for (const page of config.pages) {
+        for (const cat of page.categories) {
+          const svc = cat.services.find((s) => s.id === serviceId);
+          if (svc) return svc;
+        }
+      }
+    }
+
+    // Check in root categories
+    for (const cat of config.categories || []) {
+      const svc = cat.services.find((s) => s.id === serviceId);
+      if (svc) return svc;
+    }
+
+    return null;
+  }
+
+  public updateActivePageServices(reorderedServices: ServiceItem[]): void {
+    if (!this.configResponse?.config) return;
+    const config = this.configResponse.config;
+    const activePageId = this.pageRouter?.getActivePageId() || 'home';
+
+    // Map existing services to their target order
+    const serviceMap = new Map<string, ServiceItem>();
+    reorderedServices.forEach((s) => serviceMap.set(s.id, s));
+
+    const sortCategoryServices = (categories: Category[]) => {
+      categories.forEach((cat) => {
+        cat.services.sort((a, b) => {
+          const idxA = reorderedServices.findIndex((s) => s.id === a.id);
+          const idxB = reorderedServices.findIndex((s) => s.id === b.id);
+          if (idxA === -1 || idxB === -1) return 0;
+          return idxA - idxB;
+        });
+      });
+    };
+
+    if (config.pages && config.pages.length > 0) {
+      const activePage = config.pages.find((p) => p.id === activePageId) || config.pages[0];
+      if (activePage) sortCategoryServices(activePage.categories);
+    } else if (config.categories) {
+      sortCategoryServices(config.categories);
+    }
+  }
+
+  public async saveCurrentConfig(): Promise<void> {
+    if (!this.configResponse?.config) return;
+
+    try {
+      const yamlContent = stringifyYaml(this.configResponse.config);
+      await fetch('/api/v1/config/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: yamlContent }),
+      });
+    } catch (err) {
+      console.error('[DashPark] Failed to auto-save layout:', err);
+    }
   }
 
   /* 3. Compact List Layout */

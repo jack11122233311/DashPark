@@ -169,9 +169,17 @@ export class HealthCheckerService {
    */
   public updateConfig(config: DashParkConfig): void {
     const allServices: ServiceItem[] = [];
-    config.categories.forEach((cat) => {
-      cat.services.forEach((s) => allServices.push(s));
-    });
+    if (config.pages && config.pages.length > 0) {
+      config.pages.forEach((page) => {
+        page.categories.forEach((cat) => {
+          cat.services.forEach((s) => allServices.push(s));
+        });
+      });
+    } else if (config.categories) {
+      config.categories.forEach((cat) => {
+        cat.services.forEach((s) => allServices.push(s));
+      });
+    }
     this.currentServices = allServices;
 
     // Trigger immediate background check

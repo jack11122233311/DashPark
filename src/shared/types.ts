@@ -44,6 +44,8 @@ export interface ServiceWidget {
   refreshIntervalSeconds?: number;
 }
 
+export type BentoTileSpan = '1x1' | '2x1' | '1x2' | '2x2';
+
 export interface ServiceItem {
   id: string;
   name: string;
@@ -57,6 +59,7 @@ export interface ServiceItem {
   latencyMs?: number;
   widget?: ServiceWidget;
   shortcuts?: ServiceShortcut[];
+  bentoSpan?: BentoTileSpan;
 }
 
 export interface Category {
@@ -68,10 +71,19 @@ export interface Category {
   services: ServiceItem[];
 }
 
+export interface DashboardPage {
+  id: string;
+  name: string;
+  icon?: string;
+  description?: string;
+  categories: Category[];
+}
+
 export interface DashParkConfig {
   version: string;
   meta: DashboardMeta;
-  categories: Category[];
+  categories?: Category[];
+  pages?: DashboardPage[];
 }
 
 export interface ErrorDiagnostic {

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-09-02
+
+### Added
+- **Bento Drag-and-Drop Studio (`BentoStudio.ts`)**:
+  - Interactive "✏️ Customize" toggle button in the toolbar when in Bento Grid mode.
+  - Native HTML5 drag-and-drop tile reordering with drop indicators and smooth transitions.
+  - Live tile resizing controls directly on cards (`1x1 Tile`, `2x1 Wide Banner`, `1x2 Tall`, `2x2 Large Hero`).
+  - Inline telemetry quick-toggles (`Graph + Stat` ➔ `Stat Only` ➔ `Disabled`).
+  - Auto-saving and hot-reloading layout changes directly to `config/dashpark.yaml`.
+- **Multi-Page Dashboard Architecture (`PageRouter.ts`)**:
+  - Declarative `pages: DashboardPage[]` schema with URL hash routing (`#page=media`, `#page=infra`).
+  - Dynamic top-bar tab navigation pills (`#page-tabs-bar`) with active states.
+  - Visual Page Manager in Config Editor (`Ctrl+E`) to add new pages, switch active editing pages, and delete pages.
+  - 100% backward compatibility for legacy single-page root `categories` configs with automatic bidirectional normalization.
+- **Automated Tests**:
+  - Added `tests/pages.test.ts` (multi-page normalization and serialization).
+  - Added `tests/bento-studio.test.ts` (tile span and telemetry cycling).
+  - Total test suite expanded to 34 passing assertions across 10 test files.
+
 ## [0.2.0] - 2026-09-02
 
 ### Added

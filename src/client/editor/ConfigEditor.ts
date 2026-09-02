@@ -111,29 +111,140 @@ export class ConfigEditor {
     }
   }
 
+  private activeEditingPageId: string = 'home';
+
   private renderVisualForm(): void {
     const container = document.getElementById('visual-categories-list');
     if (!container || !this.currentConfig) return;
 
+    const pages = this.currentConfig.pages || [];
+    const isMultiPage = pages.length > 0;
+
+    let activeCategories: Category[] = [];
+    if (isMultiPage) {
+      const activePage = pages.find((p) => p.id === this.activeEditingPageId) || pages[0];
+      if (activePage) {
+        this.activeEditingPageId = activePage.id;
+        activeCategories = activePage.categories;
+      }
+    } else {
+      activeCategories = this.currentConfig.categories || [];
+    }
+
+    const pagesHeaderHtml = isMultiPage
+      ? `<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; background: var(--bg-surface); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span style="font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">📄 Page:</span>
+            ${pages
+              .map(
+                (p) => `
+                  <button 
+                    type="button" 
+                    class="page-tab-btn ${p.id === this.activeEditingPageId ? 'active' : ''}" 
+                    data-edit-page-id="${p.id}"
+                    style="padding: 0.25rem 0.65rem; font-size: 0.75rem;"
+                  >
+                    ${this.escapeHtml(p.name)}
+                  </button>
+                `
+              )
+              .join('')}
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <button type="button" class="btn-secondary" id="btn-add-page" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">+ Add Page</button>
+            <button type="button" class="btn-secondary" id="btn-delete-page" style="font-size: 0.75rem; padding: 0.3rem 0.6rem; color: var(--status-offline);" title="Delete current page">Delete Page</button>
+          </div>
+        </div>`
+      : `<div style="display: flex; justify-content: flex-end; margin-bottom: 0.75rem;">
+          <button type="button" class="btn-secondary" id="btn-convert-multipage" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">+ Enable Multi-Page Tabs</button>
+        </div>`;
+
     container.innerHTML = `
+      ${pagesHeaderHtml}
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h3 style="font-size: 1rem; font-weight: 700;">Categories & Services</h3>
         <button type="button" class="btn-secondary" id="btn-add-category">+ Add Category</button>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-        ${this.currentConfig.categories
+        ${activeCategories
           .map((cat, catIdx) => this.renderCategoryItem(cat, catIdx))
           .join('')}
       </div>
     `;
+
+    // Hook page management
+    container.querySelectorAll<HTMLButtonElement>('[data-edit-page-id]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pid = btn.getAttribute('data-edit-page-id');
+        if (pid) {
+          this.activeEditingPageId = pid;
+          this.renderVisualForm();
+        }
+      });
+    });
+
+    document.getElementById('btn-add-page')?.addEventListener('click', () => {
+      const name = prompt('Enter new page name (e.g. Media, Servers, Network):');
+      if (name && name.trim()) {
+        const id = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!this.currentConfig?.pages) this.currentConfig!.pages = [];
+        this.currentConfig!.pages.push({
+          id: id || `page_${Date.now()}`,
+          name: name.trim(),
+          icon: 'folder',
+          description: `${name.trim()} Dashboard`,
+          categories: [],
+        });
+        this.activeEditingPageId = id;
+        this.renderVisualForm();
+      }
+    });
+
+    document.getElementById('btn-convert-multipage')?.addEventListener('click', () => {
+      if (this.currentConfig) {
+        this.currentConfig.pages = [
+          {
+            id: 'home',
+            name: 'Home',
+            icon: 'home',
+            description: 'Overview',
+            categories: this.currentConfig.categories || [],
+          },
+          {
+            id: 'media',
+            name: 'Media',
+            icon: 'film',
+            description: 'Media & Streaming',
+            categories: [],
+          },
+        ];
+        this.activeEditingPageId = 'home';
+        this.renderVisualForm();
+      }
+    });
+
+    document.getElementById('btn-delete-page')?.addEventListener('click', () => {
+      if (this.currentConfig?.pages && this.currentConfig.pages.length > 1) {
+        if (confirm(`Delete current page "${this.activeEditingPageId}"?`)) {
+          this.currentConfig.pages = this.currentConfig.pages.filter(
+            (p) => p.id !== this.activeEditingPageId
+          );
+          this.activeEditingPageId = this.currentConfig.pages[0].id;
+          this.renderVisualForm();
+        }
+      } else {
+        alert('You must have at least one page.');
+      }
+    });
 
     // Hook add category button
     document.getElementById('btn-add-category')?.addEventListener('click', () => {
       const name = prompt('Enter new category name (e.g. Monitoring, Media, Security):');
       if (name && name.trim()) {
         const id = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        this.currentConfig?.categories.push({
+        const targetCategories = this.getActiveCategoriesList();
+        targetCategories.push({
           id,
           name: name.trim(),
           icon: 'folder',
@@ -145,6 +256,16 @@ export class ConfigEditor {
     });
 
     this.attachVisualEventListeners();
+  }
+
+  private getActiveCategoriesList(): Category[] {
+    if (!this.currentConfig) return [];
+    if (this.currentConfig.pages && this.currentConfig.pages.length > 0) {
+      const page = this.currentConfig.pages.find((p) => p.id === this.activeEditingPageId) || this.currentConfig.pages[0];
+      return page.categories;
+    }
+    if (!this.currentConfig.categories) this.currentConfig.categories = [];
+    return this.currentConfig.categories;
   }
 
   private renderCategoryItem(cat: Category, catIdx: number): string {
@@ -192,6 +313,7 @@ export class ConfigEditor {
     const isWidgetEnabled = svc.widget?.enabled !== false;
     const isGraphEnabled = svc.widget?.showGraph !== false;
     const shortcuts = svc.shortcuts || [];
+    const bentoSpan = svc.bentoSpan || '1x1';
 
     return `
       <div class="visual-service-item" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" style="display: flex; flex-direction: column; gap: 0.65rem; align-items: stretch; background: var(--bg-surface-elevated); padding: 0.875rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
@@ -206,7 +328,7 @@ export class ConfigEditor {
               data-cat-index="${catIdx}" 
               data-svc-index="${svcIdx}"
               placeholder="Service Name" 
-              style="width: 150px; font-weight: 600;"
+              style="width: 140px; font-weight: 600;"
             />
             <input 
               type="text" 
@@ -224,8 +346,14 @@ export class ConfigEditor {
               data-cat-index="${catIdx}" 
               data-svc-index="${svcIdx}"
               placeholder="Icon (e.g. emby)" 
-              style="width: 110px; font-family: var(--font-mono); font-size: 0.8125rem;"
+              style="width: 100px; font-family: var(--font-mono); font-size: 0.8125rem;"
             />
+            <select class="form-input svc-bento-span" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" style="width: 105px; font-size: 0.75rem; padding: 0.25rem 0.4rem;" title="Bento Tile Grid Span">
+              <option value="1x1" ${bentoSpan === '1x1' ? 'selected' : ''}>1x1 Tile</option>
+              <option value="2x1" ${bentoSpan === '2x1' ? 'selected' : ''}>2x1 Wide</option>
+              <option value="1x2" ${bentoSpan === '1x2' ? 'selected' : ''}>1x2 Tall</option>
+              <option value="2x2" ${bentoSpan === '2x2' ? 'selected' : ''}>2x2 Large</option>
+            </select>
           </div>
 
           <div style="display: flex; align-items: center; gap: 0.4rem;">
@@ -395,6 +523,8 @@ export class ConfigEditor {
   }
 
   private attachVisualEventListeners(): void {
+    const activeCategories = this.getActiveCategoriesList();
+
     // Preset dropdown apply
     document.querySelectorAll<HTMLSelectElement>('.svc-preset-select').forEach((select) => {
       select.addEventListener('change', () => {
@@ -406,7 +536,7 @@ export class ConfigEditor {
 
         const catIdx = parseInt(select.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(select.getAttribute('data-svc-index') || '0', 10);
-        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const svc = activeCategories[catIdx]?.services[svcIdx];
 
         if (svc) {
           svc.name = preset.name;
@@ -426,12 +556,24 @@ export class ConfigEditor {
       });
     });
 
+    // Bento Span selector
+    document.querySelectorAll<HTMLSelectElement>('.svc-bento-span').forEach((select) => {
+      select.addEventListener('change', () => {
+        const catIdx = parseInt(select.getAttribute('data-cat-index') || '0', 10);
+        const svcIdx = parseInt(select.getAttribute('data-svc-index') || '0', 10);
+        const svc = activeCategories[catIdx]?.services[svcIdx];
+        if (svc) {
+          svc.bentoSpan = select.value as any;
+        }
+      });
+    });
+
     // Category Name & Icon inputs
     document.querySelectorAll<HTMLInputElement>('.cat-name-input').forEach((input) => {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
-        if (this.currentConfig?.categories[catIdx]) {
-          this.currentConfig.categories[catIdx].name = input.value;
+        if (activeCategories[catIdx]) {
+          activeCategories[catIdx].name = input.value;
         }
       });
     });
@@ -439,8 +581,8 @@ export class ConfigEditor {
     document.querySelectorAll<HTMLInputElement>('.cat-icon-input').forEach((input) => {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
-        if (this.currentConfig?.categories[catIdx]) {
-          this.currentConfig.categories[catIdx].icon = input.value;
+        if (activeCategories[catIdx]) {
+          activeCategories[catIdx].icon = input.value;
         }
       });
     });
@@ -449,8 +591,8 @@ export class ConfigEditor {
     document.querySelectorAll<HTMLButtonElement>('.btn-delete-cat').forEach((btn) => {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
-        if (this.currentConfig && confirm(`Delete category "${this.currentConfig.categories[catIdx]?.name}"?`)) {
-          this.currentConfig.categories.splice(catIdx, 1);
+        if (confirm(`Delete category "${activeCategories[catIdx]?.name}"?`)) {
+          activeCategories.splice(catIdx, 1);
           this.renderVisualForm();
         }
       });
@@ -465,13 +607,14 @@ export class ConfigEditor {
           const url = prompt('Service URL (e.g. http://192.168.1.100:8080):', 'http://');
           if (url && url.trim()) {
             const cleanId = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-            this.currentConfig?.categories[catIdx].services.push({
+            activeCategories[catIdx].services.push({
               id: cleanId || `svc_${Date.now()}`,
               name: name.trim(),
               url: url.trim(),
               icon: cleanId,
               target: '_blank',
               tags: [],
+              bentoSpan: '1x1',
               widget: { enabled: true, type: 'stat', showGraph: true },
               shortcuts: [],
             });
@@ -486,8 +629,8 @@ export class ConfigEditor {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
-        if (this.currentConfig?.categories[catIdx]?.services[svcIdx]) {
-          this.currentConfig.categories[catIdx].services[svcIdx].name = input.value;
+        if (activeCategories[catIdx]?.services[svcIdx]) {
+          activeCategories[catIdx].services[svcIdx].name = input.value;
         }
       });
     });
@@ -496,8 +639,8 @@ export class ConfigEditor {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
-        if (this.currentConfig?.categories[catIdx]?.services[svcIdx]) {
-          this.currentConfig.categories[catIdx].services[svcIdx].url = input.value;
+        if (activeCategories[catIdx]?.services[svcIdx]) {
+          activeCategories[catIdx].services[svcIdx].url = input.value;
         }
       });
     });
@@ -506,8 +649,8 @@ export class ConfigEditor {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
-        if (this.currentConfig?.categories[catIdx]?.services[svcIdx]) {
-          this.currentConfig.categories[catIdx].services[svcIdx].icon = input.value;
+        if (activeCategories[catIdx]?.services[svcIdx]) {
+          activeCategories[catIdx].services[svcIdx].icon = input.value;
         }
       });
     });
@@ -517,8 +660,8 @@ export class ConfigEditor {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(btn.getAttribute('data-svc-index') || '0', 10);
-        if (this.currentConfig?.categories[catIdx]?.services) {
-          this.currentConfig.categories[catIdx].services.splice(svcIdx, 1);
+        if (activeCategories[catIdx]?.services) {
+          activeCategories[catIdx].services.splice(svcIdx, 1);
           this.renderVisualForm();
         }
       });
@@ -529,7 +672,7 @@ export class ConfigEditor {
       chk.addEventListener('change', () => {
         const catIdx = parseInt(chk.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(chk.getAttribute('data-svc-index') || '0', 10);
-        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const svc = activeCategories[catIdx]?.services[svcIdx];
         if (svc) {
           if (!svc.widget) svc.widget = { type: 'stat' };
           svc.widget.enabled = chk.checked;
@@ -541,7 +684,7 @@ export class ConfigEditor {
       chk.addEventListener('change', () => {
         const catIdx = parseInt(chk.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(chk.getAttribute('data-svc-index') || '0', 10);
-        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const svc = activeCategories[catIdx]?.services[svcIdx];
         if (svc) {
           if (!svc.widget) svc.widget = { type: 'stat' };
           svc.widget.showGraph = chk.checked;
@@ -553,7 +696,7 @@ export class ConfigEditor {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
-        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const svc = activeCategories[catIdx]?.services[svcIdx];
         if (svc) {
           if (!svc.widget) svc.widget = { type: 'stat' };
           svc.widget.url = input.value;
@@ -565,7 +708,7 @@ export class ConfigEditor {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
-        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const svc = activeCategories[catIdx]?.services[svcIdx];
         if (svc) {
           if (!svc.widget) svc.widget = { type: 'stat' };
           svc.widget.jsonPath = input.value;
@@ -577,7 +720,7 @@ export class ConfigEditor {
       input.addEventListener('change', () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
-        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const svc = activeCategories[catIdx]?.services[svcIdx];
         if (svc) {
           if (!svc.widget) svc.widget = { type: 'stat' };
           svc.widget.label = input.value;
@@ -590,7 +733,7 @@ export class ConfigEditor {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(btn.getAttribute('data-svc-index') || '0', 10);
-        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const svc = activeCategories[catIdx]?.services[svcIdx];
         if (svc) {
           if (!svc.shortcuts) svc.shortcuts = [];
           svc.shortcuts.push({ name: 'Link', url: svc.url });
@@ -604,7 +747,7 @@ export class ConfigEditor {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         const scIdx = parseInt(input.getAttribute('data-sc-index') || '0', 10);
-        const sc = this.currentConfig?.categories[catIdx]?.services[svcIdx]?.shortcuts?.[scIdx];
+        const sc = activeCategories[catIdx]?.services[svcIdx]?.shortcuts?.[scIdx];
         if (sc) sc.name = input.value;
       });
     });
@@ -614,7 +757,7 @@ export class ConfigEditor {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(input.getAttribute('data-svc-index') || '0', 10);
         const scIdx = parseInt(input.getAttribute('data-sc-index') || '0', 10);
-        const sc = this.currentConfig?.categories[catIdx]?.services[svcIdx]?.shortcuts?.[scIdx];
+        const sc = activeCategories[catIdx]?.services[svcIdx]?.shortcuts?.[scIdx];
         if (sc) sc.url = input.value;
       });
     });
@@ -624,7 +767,7 @@ export class ConfigEditor {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(btn.getAttribute('data-svc-index') || '0', 10);
         const scIdx = parseInt(btn.getAttribute('data-sc-index') || '0', 10);
-        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const svc = activeCategories[catIdx]?.services[svcIdx];
         if (svc?.shortcuts) {
           svc.shortcuts.splice(scIdx, 1);
           this.renderVisualForm();
@@ -637,7 +780,7 @@ export class ConfigEditor {
       btn.addEventListener('click', async () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
         const svcIdx = parseInt(btn.getAttribute('data-svc-index') || '0', 10);
-        const svc = this.currentConfig?.categories[catIdx]?.services[svcIdx];
+        const svc = activeCategories[catIdx]?.services[svcIdx];
         const url = svc?.widget?.url;
         const jsonPath = svc?.widget?.jsonPath;
 
