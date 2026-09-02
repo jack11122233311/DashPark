@@ -129,9 +129,11 @@ class DashParkClient {
 
     const editBentoBtn = document.getElementById('btn-edit-bento');
     editBentoBtn?.addEventListener('click', async () => {
-      if (!this.bentoStudio) return;
-      const isEditing = this.bentoStudio.toggleEditMode();
-      editBentoBtn.classList.toggle('active', isEditing);
+      const ok = await this.challengePin();
+      if (!ok) return;
+
+      const isEditing = this.bentoStudio?.toggleEditMode();
+      editBentoBtn.classList.toggle('active', !!isEditing);
       editBentoBtn.innerHTML = isEditing ? '<span>💾 Done (Save)</span>' : '<span>✏️ Customize</span>';
       
       this.renderContent();
@@ -152,8 +154,11 @@ class DashParkClient {
     });
 
     const openEditorBtn = document.getElementById('btn-open-editor');
-    openEditorBtn?.addEventListener('click', () => {
-      this.configEditor?.open();
+    openEditorBtn?.addEventListener('click', async () => {
+      const ok = await this.challengePin();
+      if (ok) {
+        this.configEditor?.open();
+      }
     });
   }
 
@@ -214,6 +219,125 @@ class DashParkClient {
     } catch {
       // Storage access may be restricted
     }
+  }
+
+  private async initWeather(): Promise<void> {
+    const weatherContainer = document.getElementById('weather-container');
+    const meta = this.configResponse?.config?.meta;
+
+    if (!weatherContainer || meta?.weather?.enabled === false) {
+      if (weatherContainer) weatherContainer.style.display = 'none';
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams();
+      if (meta?.weather?.latitude) params.set('lat', String(meta.weather.latitude));
+      if (meta?.weather?.longitude) params.set('lon', String(meta.weather.longitude));
+      if (meta?.weather?.units) params.set('units', meta.weather.units);
+      if (meta?.weather?.city) params.set('city', meta.weather.city);
+
+      const res = await fetch(`/api/v1/weather?${params.toString()}`);
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.success && data.weather) {
+        const w = data.weather;
+        const iconEl = document.getElementById('weather-icon');
+        const tempEl = document.getElementById('weather-temp');
+        const condEl = document.getElementById('weather-condition');
+
+        const weatherIcons: Record<string, string> = {
+          'Clear Sky': '☀️',
+          'Mainly Clear': '🌤️',
+          'Partly Cloudy': '⛅',
+          'Overcast': '☁️',
+          'Foggy': '🌫️',
+          'Light Drizzle': '🌦️',
+          'Slight Rain': '🌧️',
+          'Moderate Rain': '🌧️',
+          'Heavy Rain': '⛈️',
+          'Slight Snow': '🌨️',
+          'Thunderstorm': '⚡',
+        };
+
+        if (iconEl) iconEl.textContent = weatherIcons[w.condition] || '🌤️';
+        if (tempEl) tempEl.textContent = `${w.temperature}${w.unit}`;
+        if (condEl) condEl.textContent = w.condition;
+
+        weatherContainer.style.display = 'inline-flex';
+      }
+    } catch {
+      // Ignore weather errors
+    }
+  }
+
+  public async challengePin(): Promise<boolean> {
+    const meta = this.configResponse?.config?.meta;
+    if (!meta?.auth?.pinHash) return true; // No PIN configured
+
+    const dialog = document.getElementById('pin-dialog') as HTMLDialogElement | null;
+    const pinInput = document.getElementById('pin-input') as HTMLInputElement | null;
+    const submitBtn = document.getElementById('pin-submit-btn');
+    const cancelBtn = document.getElementById('pin-cancel-btn');
+
+    if (!dialog || !pinInput) return true;
+
+    pinInput.value = '';
+    dialog.showModal();
+
+    return new Promise((resolve) => {
+      const cleanup = () => {
+        submitBtn?.removeEventListener('click', onSubmit);
+        cancelBtn?.removeEventListener('click', onCancel);
+        pinInput.removeEventListener('keydown', onKeyDown);
+      };
+
+      const onSubmit = async () => {
+        const pin = pinInput.value;
+        try {
+          const res = await fetch('/api/v1/auth/verify-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin }),
+          });
+          const data = await res.json();
+          if (data.authenticated) {
+            cleanup();
+            dialog.close();
+            resolve(true);
+          } else {
+            pinInput.classList.add('invalid');
+            pinInput.value = '';
+            pinInput.placeholder = 'Wrong PIN';
+            setTimeout(() => {
+              pinInput.classList.remove('invalid');
+              pinInput.placeholder = '••••';
+            }, 1200);
+          }
+        } catch {
+          cleanup();
+          dialog.close();
+          resolve(false);
+        }
+      };
+
+      const onCancel = () => {
+        cleanup();
+        dialog.close();
+        resolve(false);
+      };
+
+      const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter') onSubmit();
+        else if (e.key === 'Escape') onCancel();
+      };
+
+      submitBtn?.addEventListener('click', onSubmit);
+      cancelBtn?.addEventListener('click', onCancel);
+      pinInput.addEventListener('keydown', onKeyDown);
+      pinInput.focus();
+    });
   }
 
   private initClock(): void {
@@ -377,7 +501,7 @@ class DashParkClient {
   }
 
   private async loadData(): Promise<void> {
-    await Promise.all([this.loadConfig(), this.updateServerHealth(), this.pollServiceHealth()]);
+    await Promise.all([this.loadConfig(), this.updateServerHealth(), this.pollServiceHealth(), this.initWeather()]);
   }
 
   private async updateServerHealth(): Promise<void> {
@@ -587,6 +711,15 @@ class DashParkClient {
     const clockContainer = document.getElementById('clock-container');
     if (clockContainer) {
       clockContainer.style.display = meta.showClock === false ? 'none' : 'flex';
+    }
+
+    // Weather Visibility
+    this.initWeather();
+
+    // Kiosk Mode & PIN Protection
+    const openEditorBtn = document.getElementById('btn-open-editor');
+    if (openEditorBtn) {
+      openEditorBtn.style.display = (meta.auth?.kioskMode && meta.auth?.pinHash) ? 'none' : 'inline-flex';
     }
   }
 

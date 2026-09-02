@@ -4,6 +4,30 @@ export const ThemeNameSchema = z.enum(['dark', 'light', 'nord', 'dracula', 'cybe
 export const LayoutModeSchema = z.enum(['grid', 'bento', 'compact']).default('grid');
 export const ServiceTargetSchema = z.enum(['_blank', '_self']).default('_blank');
 
+export const WeatherConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  city: z.string().optional().default(''),
+  units: z.enum(['celsius', 'fahrenheit']).default('celsius'),
+}).optional();
+
+export const AuthConfigSchema = z.object({
+  pinHash: z.string().optional(),
+  kioskMode: z.boolean().optional().default(false),
+}).optional();
+
+export const WebhookAlertSchema = z.object({
+  url: z.string().url('Webhook URL must be valid'),
+  type: z.enum(['discord', 'telegram', 'ntfy', 'gotify']).default('discord'),
+  enabled: z.boolean().default(true),
+  consecutiveFailures: z.number().int().min(1).max(10).optional().default(2),
+});
+
+export const AlertsConfigSchema = z.object({
+  webhooks: z.array(WebhookAlertSchema).optional().default([]),
+}).optional();
+
 export const DashboardMetaSchema = z.object({
   title: z.string().min(1, 'Dashboard title cannot be empty').default('DashPark'),
   subtitle: z.string().optional().default(''),
@@ -23,6 +47,9 @@ export const DashboardMetaSchema = z.object({
     provider: z.enum(['duckduckgo', 'google', 'brave', 'searxng', 'custom']).default('duckduckgo'),
     customUrl: z.string().optional().default(''),
   }).optional().default({ enabled: true, provider: 'duckduckgo', customUrl: '' }),
+  weather: WeatherConfigSchema,
+  auth: AuthConfigSchema,
+  alerts: AlertsConfigSchema,
 }).default({
   title: 'DashPark',
   subtitle: '',

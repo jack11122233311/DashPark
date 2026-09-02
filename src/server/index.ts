@@ -10,6 +10,10 @@ import { healthRoutes } from './routes/health.js';
 import { systemRoutes } from './routes/system.js';
 import { createConfigRoutes } from './routes/config.js';
 import { widgetRoutes } from './routes/widgets.js';
+import { dockerRoutes } from './routes/docker.js';
+import { weatherRoutes } from './routes/weather.js';
+import { createAuthRoutes } from './routes/auth.js';
+import { customRoutes } from './routes/custom.js';
 import { globalHealthChecker } from './services/health-checker.js';
 import { APP_VERSION } from '../shared/version.js';
 import type { ServerHealthResponse } from '../shared/types.js';
@@ -35,6 +39,10 @@ export async function setupServer() {
   await fastify.register(healthRoutes);
   await fastify.register(systemRoutes);
   await fastify.register(widgetRoutes);
+  await fastify.register(dockerRoutes);
+  await fastify.register(weatherRoutes);
+  await fastify.register(createAuthRoutes(configLoader));
+  await fastify.register(customRoutes);
   await fastify.register(createConfigRoutes(configLoader));
 
   // --- API Routes ---

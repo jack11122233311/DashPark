@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/client/style.css" />
   <link rel="stylesheet" href="/src/client/editor/editor.css" />
+  <link rel="stylesheet" href="/api/v1/custom/css" id="custom-css-link" />
 </head>
 <body class="theme-dark">
   <div id="app" class="dashboard-container">
@@ -112,6 +113,13 @@
           <span id="server-stats-text">v0.0.1 • Connecting...</span>
         </div>
 
+        <!-- Weather Telemetry Pill -->
+        <div class="weather-container" id="weather-container" style="display: none;" title="Live Weather Telemetry">
+          <span id="weather-icon" style="font-size: 1rem;">🌤️</span>
+          <span id="weather-temp" style="font-weight: 700; font-family: var(--font-mono); font-size: 0.8125rem;">--°C</span>
+          <span id="weather-condition" style="font-size: 0.75rem; color: var(--text-muted);">Weather</span>
+        </div>
+
         <!-- Clock & Date -->
         <div class="clock-container" id="clock-container">
           <div class="clock-display" id="clock-display">00:00:00</div>
@@ -211,6 +219,31 @@
             <button type="button" id="editor-cancel-btn" class="btn-secondary">Cancel</button>
             <button type="button" id="editor-save-btn" class="btn-primary">Save Changes</button>
           </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- PIN Authentication Dialog -->
+    <dialog id="pin-dialog" class="pin-dialog">
+      <div class="pin-modal-container">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+          <span style="font-size: 1.5rem;">🔒</span>
+          <h3 style="font-size: 1.125rem; font-weight: 700;">PIN Authentication Required</h3>
+        </div>
+        <p style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 1rem;">
+          This dashboard is protected in Kiosk Mode. Enter the master PIN to unlock configuration controls:
+        </p>
+        <input 
+          type="password" 
+          id="pin-input" 
+          class="form-input" 
+          placeholder="••••" 
+          maxlength="16" 
+          style="font-size: 1.25rem; text-align: center; letter-spacing: 0.25rem; font-family: var(--font-mono); margin-bottom: 1rem;" 
+        />
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+          <button type="button" id="pin-cancel-btn" class="btn-secondary">Cancel</button>
+          <button type="button" id="pin-submit-btn" class="btn-primary">Unlock</button>
         </div>
       </div>
     </dialog>

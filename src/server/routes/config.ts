@@ -54,7 +54,11 @@ export function createConfigRoutes(configLoader: ConfigLoader): FastifyPluginAsy
           // 4. Safe write directly to target file (avoids Windows lock & Docker inode issues with renameSync)
           fs.writeFileSync(targetPath, content, 'utf-8');
 
-          // 5. Reload config loader & health checker
+          // 5. Create versioned snapshot in rolling history
+          const { globalSnapshotManager } = await import('../services/snapshot-manager.js');
+          globalSnapshotManager.createSnapshot(content);
+
+          // 6. Reload config loader & health checker
           const updated = configLoader.load();
           if (parseResult.config) {
             globalHealthChecker.updateConfig(parseResult.config);
@@ -85,6 +89,45 @@ export function createConfigRoutes(configLoader: ConfigLoader): FastifyPluginAsy
         }
       }
     );
+
+    // List snapshots endpoint
+    fastify.get('/api/v1/config/snapshots', async (_req, reply) => {
+      const { globalSnapshotManager } = await import('../services/snapshot-manager.js');
+      const snapshots = globalSnapshotManager.listSnapshots();
+      return reply.status(200).send({ snapshots });
+    });
+
+    // Restore snapshot endpoint
+    fastify.post<{ Body: { filename: string } }>('/api/v1/config/snapshots/restore', async (req, reply) => {
+      const { filename } = req.body || {};
+      if (!filename) return reply.status(400).send({ success: false, error: 'Filename is required' });
+
+      const { globalSnapshotManager } = await import('../services/snapshot-manager.js');
+      const snapshotContent = globalSnapshotManager.getSnapshotContent(filename);
+
+      if (!snapshotContent) {
+        return reply.status(404).send({ success: false, error: 'Snapshot not found' });
+      }
+
+      const configDir = path.resolve(process.cwd(), 'config');
+      const targetPath = path.join(configDir, 'dashpark.yaml');
+
+      try {
+        fs.writeFileSync(targetPath, snapshotContent, 'utf-8');
+        const updated = configLoader.load();
+        if (updated.config) {
+          globalHealthChecker.updateConfig(updated.config);
+        }
+
+        return reply.status(200).send({
+          success: true,
+          message: `Restored snapshot ${filename} successfully`,
+          config: updated.config,
+        });
+      } catch (err: unknown) {
+        return reply.status(500).send({ success: false, error: (err as Error)?.message || 'Failed to restore snapshot' });
+      }
+    });
 
     // Reset configuration endpoint: restores active config to default sample
     fastify.post('/api/v1/config/reset', async (_req, reply) => {

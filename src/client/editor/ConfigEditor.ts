@@ -1,6 +1,7 @@
-import type { DashParkConfig, Category, ServiceItem, ThemeName, LayoutMode } from '../../shared/types.js';
+import type { DashParkConfig, Category, ServiceItem, ThemeName, LayoutMode, ConfigSnapshotInfo } from '../../shared/types.js';
 import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
 import { HOMELAB_PRESETS, detectServiceFromUrl } from './presets.js';
+import { detectAndImportConfig } from './importers.js';
 
 export class ConfigEditor {
   private dialog: HTMLDialogElement | null = null;
@@ -10,6 +11,8 @@ export class ConfigEditor {
   private validationDebounceTimer: NodeJS.Timeout | null = null;
   private onSavedCallback: () => void;
   private activeEditingPageId: string = 'home';
+  private customCssContent: string = '';
+  private snapshotsList: ConfigSnapshotInfo[] = [];
 
   constructor(onSaved: () => void) {
     this.onSavedCallback = onSaved;
@@ -68,6 +71,9 @@ export class ConfigEditor {
       }
       this.rawYaml = data.rawYaml || (data.config ? stringifyYaml(data.config) : '');
 
+      // Load custom CSS & snapshots
+      await Promise.all([this.loadCustomCss(), this.loadSnapshots()]);
+
       this.renderVisualForm();
       this.renderSettingsView();
       this.renderYamlEditor();
@@ -82,6 +88,29 @@ export class ConfigEditor {
   public close(): void {
     if (this.dialog?.open) {
       this.dialog.close();
+    }
+  }
+
+  private async loadCustomCss(): Promise<void> {
+    try {
+      const res = await fetch('/api/v1/custom/css');
+      if (res.ok) {
+        this.customCssContent = await res.text();
+      }
+    } catch {
+      this.customCssContent = '';
+    }
+  }
+
+  private async loadSnapshots(): Promise<void> {
+    try {
+      const res = await fetch('/api/v1/config/snapshots');
+      if (res.ok) {
+        const data = await res.json();
+        this.snapshotsList = data.snapshots || [];
+      }
+    } catch {
+      this.snapshotsList = [];
     }
   }
 
@@ -103,7 +132,6 @@ export class ConfigEditor {
     guidesPane?.classList.toggle('active', tab === 'guides');
 
     if (tab === 'visual') {
-      // Sync YAML into Visual Config if modified in YAML tab
       try {
         if (this.rawYaml && this.rawYaml.trim()) {
           const parsed = parseYaml(this.rawYaml);
@@ -118,7 +146,6 @@ export class ConfigEditor {
     } else if (tab === 'settings') {
       this.renderSettingsView();
     } else if (tab === 'yaml') {
-      // Sync Visual Config into YAML textarea
       if (this.currentConfig) {
         const configToSerialize = JSON.parse(JSON.stringify(this.currentConfig));
         if (configToSerialize.pages && configToSerialize.pages.length > 0) {
@@ -153,7 +180,6 @@ export class ConfigEditor {
 
     const pagesHeaderHtml = isMultiPage
       ? `<div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem; background: var(--bg-surface); padding: 0.875rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
-          <!-- Top Row: Page Switcher Pills & Action Buttons -->
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
             <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
               <span style="font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">📄 Pages:</span>
@@ -180,7 +206,6 @@ export class ConfigEditor {
             </div>
           </div>
 
-          <!-- Active Page Customization Inputs -->
           ${
             activePage
               ? `<div style="display: flex; align-items: center; gap: 0.6rem; border-top: 1px solid var(--border-subtle); padding-top: 0.6rem; flex-wrap: wrap;">
@@ -247,7 +272,6 @@ export class ConfigEditor {
       });
     });
 
-    // Page Name / Icon / Desc inputs
     const pageNameInput = document.getElementById('page-name-input') as HTMLInputElement | null;
     const pageIconInput = document.getElementById('page-icon-input') as HTMLInputElement | null;
     const pageDescInput = document.getElementById('page-desc-input') as HTMLInputElement | null;
@@ -264,7 +288,6 @@ export class ConfigEditor {
       });
     }
 
-    // Move page left / right
     document.getElementById('btn-move-page-left')?.addEventListener('click', () => {
       if (this.currentConfig?.pages && activePageIndex > 0) {
         const item = this.currentConfig.pages.splice(activePageIndex, 1)[0];
@@ -335,7 +358,6 @@ export class ConfigEditor {
       }
     });
 
-    // Export YAML
     document.getElementById('btn-export-yaml')?.addEventListener('click', () => {
       if (!this.currentConfig) return;
       const configToSerialize = JSON.parse(JSON.stringify(this.currentConfig));
@@ -350,7 +372,6 @@ export class ConfigEditor {
       a.click();
     });
 
-    // Revert changes
     document.getElementById('btn-revert-config')?.addEventListener('click', async () => {
       if (confirm('Revert all unsaved changes to the last saved configuration?')) {
         await this.open();
@@ -358,7 +379,6 @@ export class ConfigEditor {
       }
     });
 
-    // Hook add category button
     document.getElementById('btn-add-category')?.addEventListener('click', () => {
       const name = prompt('Enter new category name (e.g. Monitoring, Media, Security):');
       if (name && name.trim()) {
@@ -440,7 +460,6 @@ export class ConfigEditor {
     return `
       <div class="visual-service-item" data-cat-index="${catIdx}" data-svc-index="${svcIdx}" style="display: flex; flex-direction: column; gap: 0.65rem; align-items: stretch; background: var(--bg-surface-elevated); padding: 0.875rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
         
-        <!-- Top Row: Name, URL, Icon & Actions -->
         <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; flex-wrap: wrap;">
           <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 280px;">
             <input 
@@ -507,7 +526,6 @@ export class ConfigEditor {
           </div>
         </div>
 
-        <!-- Middle Row: Modular Live Widget API & Toggles -->
         <div style="display: flex; flex-direction: column; gap: 0.4rem; background: var(--bg-surface); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.75rem;">
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -564,7 +582,6 @@ export class ConfigEditor {
           </div>
         </div>
 
-        <!-- Bottom Row: Action Shortcuts -->
         <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; background: var(--bg-surface); padding: 0.4rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.75rem;">
           <span style="font-weight: 700; color: var(--text-muted); text-transform: uppercase;">🔗 Shortcuts:</span>
           ${
@@ -612,6 +629,9 @@ export class ConfigEditor {
     if (!container || !this.currentConfig) return;
 
     const meta = this.currentConfig.meta;
+    const weather = meta.weather || { enabled: false, units: 'celsius' };
+    const auth = meta.auth || { kioskMode: false };
+    const webhooks = meta.alerts?.webhooks || [];
 
     container.innerHTML = `
       <div class="settings-container">
@@ -725,7 +745,192 @@ export class ConfigEditor {
           </div>
         </div>
 
-        <!-- 4. Clock & Search Engine -->
+        <!-- 4. Weather & Environmental Telemetry -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">🌤️</span>
+            <div>
+              <h4 class="settings-card-title">Weather Telemetry (Zero API Key)</h4>
+              <p class="settings-card-subtitle">Display local temperature & conditions powered by Open-Meteo</p>
+            </div>
+          </div>
+          <div class="settings-grid-2">
+            <div class="settings-field">
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 600;">
+                <input type="checkbox" id="set-meta-weather-enabled" ${weather.enabled ? 'checked' : ''} />
+                Enable Weather in Header
+              </label>
+              <span class="settings-desc">Displays live temperature and condition icon</span>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Temperature Unit</label>
+              <select id="set-meta-weather-units" class="form-input">
+                <option value="celsius" ${weather.units === 'celsius' ? 'selected' : ''}>Celsius (°C)</option>
+                <option value="fahrenheit" ${weather.units === 'fahrenheit' ? 'selected' : ''}>Fahrenheit (°F)</option>
+              </select>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Location / City Name</label>
+              <input type="text" id="set-meta-weather-city" class="form-input" value="${this.escapeHtml(weather.city || '')}" placeholder="e.g. New York, London, Sydney" />
+            </div>
+            <div class="settings-field">
+              <label class="settings-label">Coordinates (Lat, Lon)</label>
+              <div style="display: flex; gap: 0.5rem;">
+                <input type="number" step="0.01" id="set-meta-weather-lat" class="form-input" value="${weather.latitude ?? ''}" placeholder="Latitude (51.50)" />
+                <input type="number" step="0.01" id="set-meta-weather-lon" class="form-input" value="${weather.longitude ?? ''}" placeholder="Longitude (-0.12)" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. PIN Protection & Kiosk Mode -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">🔒</span>
+            <div>
+              <h4 class="settings-card-title">PIN Protection & Kiosk Mode</h4>
+              <p class="settings-card-subtitle">Lock configuration editing behind a secure master PIN</p>
+            </div>
+          </div>
+          <div class="settings-grid-2">
+            <div class="settings-field">
+              <label class="settings-label">Master PIN (${auth.pinHash ? '✓ PIN Active' : 'No PIN'})</label>
+              <div style="display: flex; gap: 0.5rem;">
+                <input type="password" id="set-meta-pin-input" class="form-input" placeholder="${auth.pinHash ? 'Enter new PIN' : 'Set 4-8 digit PIN'}" maxlength="16" />
+                <button type="button" id="btn-save-pin" class="btn-secondary" style="font-size: 0.75rem;">Set PIN</button>
+                ${auth.pinHash ? `<button type="button" id="btn-clear-pin" class="btn-secondary" style="color: var(--status-offline); font-size: 0.75rem;">Remove</button>` : ''}
+              </div>
+            </div>
+            <div class="settings-field">
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 600; margin-top: 1.5rem;">
+                <input type="checkbox" id="set-meta-kiosk-mode" ${auth.kioskMode ? 'checked' : ''} />
+                Enable Read-Only Kiosk Mode
+              </label>
+              <span class="settings-desc">Hides the Edit and Customize buttons for public displays</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Outage Alert Webhooks -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">🔔</span>
+            <div>
+              <h4 class="settings-card-title">Outage Alert Webhooks</h4>
+              <p class="settings-card-subtitle">Send instant alerts to Discord, Telegram, Ntfy, or Gotify on service down</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <select id="new-webhook-type" class="form-input" style="width: 130px;">
+                <option value="discord">Discord</option>
+                <option value="telegram">Telegram</option>
+                <option value="ntfy">Ntfy</option>
+                <option value="gotify">Gotify</option>
+              </select>
+              <input type="text" id="new-webhook-url" class="form-input" placeholder="https://discord.com/api/webhooks/..." style="flex: 1; min-width: 250px; font-family: var(--font-mono); font-size: 0.8125rem;" />
+              <button type="button" id="btn-add-webhook" class="btn-secondary">+ Add Webhook</button>
+            </div>
+
+            <div id="webhooks-list" style="display: flex; flex-direction: column; gap: 0.4rem;">
+              ${
+                webhooks.length === 0
+                  ? `<span style="font-size: 0.8125rem; color: var(--text-muted);">No webhooks configured. Add one above to receive outage alerts.</span>`
+                  : webhooks
+                      .map(
+                        (wh, whIdx) => `
+                          <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-surface); padding: 0.4rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: 0.8125rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden; text-overflow: ellipsis;">
+                              <span style="font-weight: 700; text-transform: uppercase; color: var(--accent-primary); font-size: 0.75rem;">${wh.type}:</span>
+                              <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary);">${this.escapeHtml(wh.url)}</span>
+                            </div>
+                            <button type="button" class="btn-delete-webhook" data-wh-idx="${whIdx}" style="background: none; border: none; color: var(--status-offline); cursor: pointer;">✕</button>
+                          </div>
+                        `
+                      )
+                      .join('')
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. 1-Click Multi-Dashboard Migration Importer -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">📥</span>
+            <div>
+              <h4 class="settings-card-title">1-Click Dashboard Migration Importer</h4>
+              <p class="settings-card-subtitle">Import from Homepage (services.yaml), Homarr, Dashy (conf.yml), or Heimdall</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <input type="file" id="import-file-input" accept=".yaml,.yml,.json" style="display: none;" />
+            <div id="import-drop-zone" style="border: 2px dashed var(--border-subtle); padding: 1.5rem; text-align: center; border-radius: var(--radius-md); cursor: pointer; background: var(--bg-surface);">
+              <span style="font-size: 1.5rem;">📂</span>
+              <p style="font-size: 0.875rem; font-weight: 600; margin-top: 0.35rem;">Click to browse or drop your export file here</p>
+              <p style="font-size: 0.75rem; color: var(--text-muted);">Supports services.yaml, conf.yml, or configs/*.json</p>
+            </div>
+            <div id="import-status-box" style="display: none; padding: 0.75rem; border-radius: var(--radius-sm); font-size: 0.8125rem;"></div>
+          </div>
+        </div>
+
+        <!-- 8. Custom CSS & Custom Icon Uploader -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">🎨</span>
+            <div>
+              <h4 class="settings-card-title">Custom CSS & Local Icon Uploader</h4>
+              <p class="settings-card-subtitle">Inject custom CSS overrides and upload custom PNG / SVG icons</p>
+            </div>
+          </div>
+          <div class="settings-field">
+            <label class="settings-label">Upload Custom Icon (Saved to <code>config/icons/</code>)</label>
+            <input type="file" id="icon-file-input" accept="image/png,image/svg+xml,image/jpeg,image/webp" style="display: none;" />
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button type="button" id="btn-browse-icon" class="btn-secondary" style="font-size: 0.75rem;">Upload Icon File</button>
+              <span id="upload-icon-status" style="font-size: 0.75rem; color: var(--text-muted);">Select PNG/SVG to upload</span>
+            </div>
+          </div>
+          <div class="settings-field" style="margin-top: 0.75rem;">
+            <label class="settings-label">User Custom CSS Overrides (<code>config/custom.css</code>)</label>
+            <textarea id="custom-css-textarea" class="form-input" style="height: 100px; font-family: var(--font-mono); font-size: 0.75rem;" placeholder="/* Add custom styling here */\n.service-card { border-radius: 20px; }">${this.escapeHtml(this.customCssContent)}</textarea>
+            <div style="display: flex; justify-content: flex-end; margin-top: 0.4rem;">
+              <button type="button" id="btn-save-css" class="btn-secondary" style="font-size: 0.75rem;">Save Custom CSS</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 9. Versioned Snapshots & Rollback History -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <span style="font-size: 1.25rem;">🗂️</span>
+            <div>
+              <h4 class="settings-card-title">Versioned Snapshots & Rollback History</h4>
+              <p class="settings-card-subtitle">Restore recent configuration revisions with 1 click</p>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${
+              this.snapshotsList.length === 0
+                ? `<span style="font-size: 0.8125rem; color: var(--text-muted);">No snapshots available yet. Snapshots are created automatically on each save.</span>`
+                : this.snapshotsList
+                    .map(
+                      (s) => `
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-surface); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: 0.8125rem;">
+                          <div>
+                            <span style="font-weight: 600;">${new Date(s.timestamp).toLocaleString()}</span>
+                            <span style="color: var(--text-muted); font-size: 0.75rem; margin-left: 0.5rem;">(${s.servicesCount} services, ${(s.sizeBytes / 1024).toFixed(1)} KB)</span>
+                          </div>
+                          <button type="button" class="btn-secondary btn-restore-snap" data-snap-file="${s.filename}" style="font-size: 0.75rem; padding: 0.2rem 0.6rem;">↩️ Restore</button>
+                        </div>
+                      `
+                    )
+                    .join('')
+            }
+          </div>
+        </div>
+
+        <!-- 10. Clock & Search Engine -->
         <div class="settings-card">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">⏰</span>
@@ -764,7 +969,7 @@ export class ConfigEditor {
           </div>
         </div>
 
-        <!-- 5. Reset & Danger Zone -->
+        <!-- 11. Reset & Danger Zone -->
         <div class="settings-card" style="border-color: rgba(239, 68, 68, 0.3);">
           <div class="settings-card-header">
             <span style="font-size: 1.25rem;">🔄</span>
@@ -793,7 +998,7 @@ export class ConfigEditor {
     if (!this.currentConfig) return;
     const meta = this.currentConfig.meta;
 
-    // Title & Subtitle
+    // Title & Subtitle & Layout
     document.getElementById('set-meta-title')?.addEventListener('input', (e) => {
       meta.title = (e.target as HTMLInputElement).value;
     });
@@ -853,6 +1058,214 @@ export class ConfigEditor {
       if (opacityDisplay) opacityDisplay.textContent = `${val}%`;
     });
 
+    // Weather settings
+    document.getElementById('set-meta-weather-enabled')?.addEventListener('change', (e) => {
+      if (!meta.weather) meta.weather = { enabled: false, units: 'celsius' };
+      meta.weather.enabled = (e.target as HTMLInputElement).checked;
+    });
+    document.getElementById('set-meta-weather-units')?.addEventListener('change', (e) => {
+      if (!meta.weather) meta.weather = { enabled: true, units: 'celsius' };
+      meta.weather.units = (e.target as HTMLSelectElement).value as any;
+    });
+    document.getElementById('set-meta-weather-city')?.addEventListener('input', (e) => {
+      if (!meta.weather) meta.weather = { enabled: true, units: 'celsius' };
+      meta.weather.city = (e.target as HTMLInputElement).value;
+    });
+    document.getElementById('set-meta-weather-lat')?.addEventListener('input', (e) => {
+      if (!meta.weather) meta.weather = { enabled: true, units: 'celsius' };
+      meta.weather.latitude = parseFloat((e.target as HTMLInputElement).value) || undefined;
+    });
+    document.getElementById('set-meta-weather-lon')?.addEventListener('input', (e) => {
+      if (!meta.weather) meta.weather = { enabled: true, units: 'celsius' };
+      meta.weather.longitude = parseFloat((e.target as HTMLInputElement).value) || undefined;
+    });
+
+    // PIN & Kiosk Mode
+    document.getElementById('set-meta-kiosk-mode')?.addEventListener('change', (e) => {
+      if (!meta.auth) meta.auth = { kioskMode: false };
+      meta.auth.kioskMode = (e.target as HTMLInputElement).checked;
+    });
+
+    document.getElementById('btn-save-pin')?.addEventListener('click', async () => {
+      const pinInput = document.getElementById('set-meta-pin-input') as HTMLInputElement | null;
+      const pin = pinInput?.value.trim();
+      if (!pin) {
+        alert('Please enter a PIN');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/v1/auth/hash-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin }),
+        });
+        const data = await res.json();
+        if (data.hash) {
+          if (!meta.auth) meta.auth = { kioskMode: false };
+          meta.auth.pinHash = data.hash;
+          this.showToast('PIN configured successfully! Remember this PIN.', 'success');
+          this.renderSettingsView();
+        }
+      } catch {
+        this.showToast('Failed to compute PIN hash', 'error');
+      }
+    });
+
+    document.getElementById('btn-clear-pin')?.addEventListener('click', () => {
+      if (confirm('Remove master PIN protection?')) {
+        if (meta.auth) delete meta.auth.pinHash;
+        this.showToast('PIN removed', 'success');
+        this.renderSettingsView();
+      }
+    });
+
+    // Webhooks
+    document.getElementById('btn-add-webhook')?.addEventListener('click', () => {
+      const typeSelect = document.getElementById('new-webhook-type') as HTMLSelectElement | null;
+      const urlInput = document.getElementById('new-webhook-url') as HTMLInputElement | null;
+
+      const url = urlInput?.value.trim();
+      const type = (typeSelect?.value || 'discord') as any;
+
+      if (!url) {
+        alert('Please enter a webhook URL');
+        return;
+      }
+
+      if (!meta.alerts) meta.alerts = { webhooks: [] };
+      if (!meta.alerts.webhooks) meta.alerts.webhooks = [];
+
+      meta.alerts.webhooks.push({
+        url,
+        type,
+        enabled: true,
+        consecutiveFailures: 2,
+      });
+
+      this.showToast(`Added ${type} webhook`, 'success');
+      this.renderSettingsView();
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.btn-delete-webhook').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.getAttribute('data-wh-idx') || '0', 10);
+        if (meta.alerts?.webhooks) {
+          meta.alerts.webhooks.splice(idx, 1);
+          this.renderSettingsView();
+        }
+      });
+    });
+
+    // 1-Click Dashboard Migration Importer
+    const dropZone = document.getElementById('import-drop-zone');
+    const fileInput = document.getElementById('import-file-input') as HTMLInputElement | null;
+    const statusBox = document.getElementById('import-status-box');
+
+    dropZone?.addEventListener('click', () => fileInput?.click());
+    dropZone?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--accent-primary)';
+    });
+    dropZone?.addEventListener('dragleave', () => {
+      if (dropZone) dropZone.style.borderColor = 'var(--border-subtle)';
+    });
+    dropZone?.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (dropZone) dropZone.style.borderColor = 'var(--border-subtle)';
+      if (e.dataTransfer?.files?.[0]) {
+        this.handleImportFile(e.dataTransfer.files[0], statusBox);
+      }
+    });
+    fileInput?.addEventListener('change', () => {
+      if (fileInput.files?.[0]) {
+        this.handleImportFile(fileInput.files[0], statusBox);
+      }
+    });
+
+    // Custom CSS & Icon Upload
+    const btnBrowseIcon = document.getElementById('btn-browse-icon');
+    const iconFileInput = document.getElementById('icon-file-input') as HTMLInputElement | null;
+    const uploadIconStatus = document.getElementById('upload-icon-status');
+
+    btnBrowseIcon?.addEventListener('click', () => iconFileInput?.click());
+    iconFileInput?.addEventListener('change', async () => {
+      const file = iconFileInput.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        try {
+          if (uploadIconStatus) uploadIconStatus.textContent = 'Uploading...';
+          const res = await fetch('/api/v1/custom/icons', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: file.name, dataUrl }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            if (uploadIconStatus) uploadIconStatus.textContent = `✓ Uploaded: ${data.filename}`;
+            this.showToast(`Uploaded custom icon: ${data.filename}`, 'success');
+          } else {
+            if (uploadIconStatus) uploadIconStatus.textContent = `✕ ${data.error}`;
+          }
+        } catch {
+          if (uploadIconStatus) uploadIconStatus.textContent = '✕ Upload failed';
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('btn-save-css')?.addEventListener('click', async () => {
+      const cssArea = document.getElementById('custom-css-textarea') as HTMLTextAreaElement | null;
+      const css = cssArea?.value || '';
+
+      try {
+        const res = await fetch('/api/v1/custom/css', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ css }),
+        });
+        if (res.ok) {
+          this.showToast('Custom CSS saved & live-injected!', 'success');
+          // Reload link tag
+          const link = document.getElementById('custom-css-link') as HTMLLinkElement | null;
+          if (link) link.href = `/api/v1/custom/css?t=${Date.now()}`;
+        }
+      } catch {
+        this.showToast('Failed to save custom CSS', 'error');
+      }
+    });
+
+    // Snapshot Restore
+    document.querySelectorAll<HTMLButtonElement>('.btn-restore-snap').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const filename = btn.getAttribute('data-snap-file');
+        if (!filename) return;
+
+        if (confirm(`Restore configuration to snapshot ${filename}?`)) {
+          try {
+            const res = await fetch('/api/v1/config/snapshots/restore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ filename }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              this.showToast('Snapshot restored successfully!', 'success');
+              await this.open();
+              this.onSavedCallback();
+            } else {
+              this.showToast(data.error || 'Restore failed', 'error');
+            }
+          } catch {
+            this.showToast('Network error while restoring snapshot', 'error');
+          }
+        }
+      });
+    });
+
     // Clock & Search
     document.getElementById('set-meta-showclock')?.addEventListener('change', (e) => {
       meta.showClock = (e.target as HTMLInputElement).checked;
@@ -886,6 +1299,46 @@ export class ConfigEditor {
         }
       }
     });
+  }
+
+  private handleImportFile(file: File, statusBox: HTMLElement | null): void {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = reader.result as string;
+      const result = detectAndImportConfig(content);
+
+      if (statusBox) {
+        statusBox.style.display = 'block';
+        if (result.success) {
+          statusBox.style.background = 'rgba(16, 185, 129, 0.15)';
+          statusBox.style.color = 'var(--status-online)';
+          statusBox.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;">
+              <span>✓ Detected <strong>${result.detectedFormat.toUpperCase()}</strong> format (${result.totalServices} services across ${result.categories.length} categories).</span>
+              <button type="button" id="btn-apply-import" class="btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">Apply Import</button>
+            </div>
+          `;
+
+          document.getElementById('btn-apply-import')?.addEventListener('click', () => {
+            if (this.currentConfig) {
+              if (result.pages.length > 0) {
+                this.currentConfig.pages = result.pages;
+              } else {
+                this.currentConfig.categories = result.categories;
+              }
+              this.showToast(`Imported ${result.totalServices} services from ${result.detectedFormat}!`, 'success');
+              this.renderVisualForm();
+              this.switchTab('visual');
+            }
+          });
+        } else {
+          statusBox.style.background = 'rgba(239, 68, 68, 0.15)';
+          statusBox.style.color = 'var(--status-offline)';
+          statusBox.textContent = `✕ Import Error: ${result.error || 'Unrecognized format'}`;
+        }
+      }
+    };
+    reader.readAsText(file);
   }
 
   private renderGuidesView(): void {
@@ -931,7 +1384,6 @@ export class ConfigEditor {
   private attachVisualEventListeners(): void {
     const activeCategories = this.getActiveCategoriesList();
 
-    // Reorder Category Up/Down
     document.querySelectorAll<HTMLButtonElement>('.btn-move-cat-up').forEach((btn) => {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
@@ -954,7 +1406,6 @@ export class ConfigEditor {
       });
     });
 
-    // Reorder Service Up/Down
     document.querySelectorAll<HTMLButtonElement>('.btn-move-svc-up').forEach((btn) => {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
@@ -981,7 +1432,6 @@ export class ConfigEditor {
       });
     });
 
-    // Preset dropdown apply
     document.querySelectorAll<HTMLSelectElement>('.svc-preset-select').forEach((select) => {
       select.addEventListener('change', () => {
         const presetId = select.value;
@@ -1012,7 +1462,6 @@ export class ConfigEditor {
       });
     });
 
-    // Bento Span selector
     document.querySelectorAll<HTMLSelectElement>('.svc-bento-span').forEach((select) => {
       select.addEventListener('change', () => {
         const catIdx = parseInt(select.getAttribute('data-cat-index') || '0', 10);
@@ -1024,7 +1473,6 @@ export class ConfigEditor {
       });
     });
 
-    // Category Name & Icon inputs (listen to input & change)
     document.querySelectorAll<HTMLInputElement>('.cat-name-input').forEach((input) => {
       const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
@@ -1047,7 +1495,6 @@ export class ConfigEditor {
       input.addEventListener('change', update);
     });
 
-    // Delete category
     document.querySelectorAll<HTMLButtonElement>('.btn-delete-cat').forEach((btn) => {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
@@ -1058,7 +1505,6 @@ export class ConfigEditor {
       });
     });
 
-    // Add service
     document.querySelectorAll<HTMLButtonElement>('.btn-add-service').forEach((btn) => {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
@@ -1084,7 +1530,6 @@ export class ConfigEditor {
       });
     });
 
-    // Service Inputs & Smart URL Auto-Detection
     document.querySelectorAll<HTMLInputElement>('.svc-url-input').forEach((input) => {
       const update = () => {
         const catIdx = parseInt(input.getAttribute('data-cat-index') || '0', 10);
@@ -1093,7 +1538,6 @@ export class ConfigEditor {
         if (svc) {
           svc.url = input.value;
 
-          // ⚡ Homelab Smart URL Auto-Detection
           const detected = detectServiceFromUrl(input.value);
           if (detected && (!svc.name || svc.name.startsWith('svc_') || svc.name.startsWith('New Service') || svc.name === 'Link')) {
             svc.name = detected.name;
@@ -1140,7 +1584,6 @@ export class ConfigEditor {
       input.addEventListener('change', update);
     });
 
-    // Delete service
     document.querySelectorAll<HTMLButtonElement>('.btn-delete-svc').forEach((btn) => {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
@@ -1152,7 +1595,6 @@ export class ConfigEditor {
       });
     });
 
-    // Widget checkboxes & inputs
     document.querySelectorAll<HTMLInputElement>('.svc-widget-enabled').forEach((chk) => {
       chk.addEventListener('change', () => {
         const catIdx = parseInt(chk.getAttribute('data-cat-index') || '0', 10);
@@ -1219,7 +1661,6 @@ export class ConfigEditor {
       input.addEventListener('change', update);
     });
 
-    // Shortcuts: add, edit & delete
     document.querySelectorAll<HTMLButtonElement>('.btn-add-sc').forEach((btn) => {
       btn.addEventListener('click', () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
@@ -1270,7 +1711,6 @@ export class ConfigEditor {
       });
     });
 
-    // Test Widget API button
     document.querySelectorAll<HTMLButtonElement>('.btn-test-widget').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const catIdx = parseInt(btn.getAttribute('data-cat-index') || '0', 10);
@@ -1308,7 +1748,6 @@ export class ConfigEditor {
       });
     });
 
-    // Test ping buttons
     document.querySelectorAll<HTMLButtonElement>('.ping-test-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const url = btn.getAttribute('data-url');

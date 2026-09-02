@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-02
+
+### Added
+- **Docker Socket Auto-Discovery & Power Controls (`/api/v1/docker/*`)**:
+  - Direct UNIX socket (`/var/run/docker.sock`) & Windows Named Pipe (`//./pipe/docker_engine`) communication without third-party npm dependencies.
+  - Auto-extracts container metadata via label taxonomy (`dashpark.enable`, `dashpark.name`, `dashpark.group`, `dashpark.icon`, `dashpark.url`, `dashpark.bentoSpan`).
+  - Container power action endpoints (`POST /api/v1/docker/containers/:id/restart|start|stop`).
+- **Zero-API-Key Weather Telemetry (`/api/v1/weather`)**:
+  - Live environmental data powered by Open-Meteo with 15-minute in-memory caching.
+  - WMO weather code mapping to condition descriptions and dynamic emoji icons.
+  - Configurable units (Celsius/Fahrenheit), city name, and coordinate overrides.
+- **PIN Kiosk Mode & Protection (`/api/v1/auth/*`)**:
+  - SHA-256 master PIN protection for config editing and Bento customization.
+  - Read-only Kiosk Mode hiding edit triggers on shared and public homelab displays.
+- **1-Click Multi-Dashboard Migration Importer (`importers.ts`)**:
+  - Seamless drag-and-drop parsing and instant conversion from **Homepage** (`services.yaml`), **Homarr** (`JSON`), **Dashy** (`conf.yml`), and **Heimdall** (`export.json`).
+- **Outage Alert Dispatcher (`alert-dispatcher.ts`)**:
+  - Instant webhook notifications on service state transitions with consecutive failure thresholds.
+  - Rich embeds and payloads for **Discord**, **Telegram**, **Ntfy**, and **Gotify**.
+- **Custom CSS Injection & Local Icon Uploader (`/api/v1/custom/*`)**:
+  - Live CSS editor saving directly to `config/custom.css` with instant `<link>` reload.
+  - PNG/SVG custom icon uploader persisting to `config/icons/` for volume survival.
+- **Versioned Configuration Snapshots & 1-Click Rollback (`snapshot-manager.ts`)**:
+  - Automatic timestamped snapshot creation before every save (`config/snapshots/`).
+  - Rolling 5-snapshot retention and 1-click restore functionality from the Settings Hub.
+- **Automated Test Coverage**:
+  - Added test suites for Docker Socket, Weather, PIN Auth, Importers, Alert Dispatcher, and Snapshots.
+  - Expanded total test suite to **62 passing tests across 19 test files (100% pass rate)**.
+
 ## [0.4.0] - 2026-09-02
 
 ### Added

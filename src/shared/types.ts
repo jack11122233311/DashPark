@@ -7,6 +7,30 @@ export type LayoutMode = 'grid' | 'bento' | 'compact';
 export type ServiceTarget = '_blank' | '_self';
 export type HealthStatus = 'online' | 'degraded' | 'offline' | 'disabled' | 'pending';
 
+export interface WeatherConfig {
+  enabled: boolean;
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+  units?: 'celsius' | 'fahrenheit';
+}
+
+export interface AuthConfig {
+  pinHash?: string;
+  kioskMode?: boolean;
+}
+
+export interface WebhookAlertConfig {
+  url: string;
+  type: 'discord' | 'telegram' | 'ntfy' | 'gotify';
+  enabled: boolean;
+  consecutiveFailures?: number;
+}
+
+export interface AlertsConfig {
+  webhooks?: WebhookAlertConfig[];
+}
+
 export interface DashboardMeta {
   title: string;
   subtitle?: string;
@@ -26,7 +50,50 @@ export interface DashboardMeta {
     provider?: 'duckduckgo' | 'google' | 'brave' | 'searxng' | 'custom';
     customUrl?: string;
   };
+  weather?: WeatherConfig;
+  auth?: AuthConfig;
+  alerts?: AlertsConfig;
 }
+
+export interface DockerContainerInfo {
+  id: string;
+  name: string;
+  image: string;
+  state: 'running' | 'exited' | 'paused' | 'restarting' | 'unknown';
+  status: string;
+  cpuPercent?: number;
+  memoryMb?: number;
+  ports?: Array<{ ip?: string; privatePort: number; publicPort?: number; type: string }>;
+  labels: Record<string, string>;
+  dashParkMeta?: {
+    enabled: boolean;
+    name?: string;
+    icon?: string;
+    url?: string;
+    group?: string;
+    category?: string;
+    bentoSpan?: BentoTileSpan;
+  };
+}
+
+export interface WeatherData {
+  temperature: number;
+  unit: string;
+  weatherCode: number;
+  condition: string;
+  humidity: number;
+  windSpeed: number;
+  location: string;
+  timestamp: string;
+}
+
+export interface ConfigSnapshotInfo {
+  filename: string;
+  timestamp: string;
+  sizeBytes: number;
+  servicesCount: number;
+}
+
 
 export type WidgetType = 'stat' | 'sparkline' | 'chart' | 'badge';
 

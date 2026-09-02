@@ -1,5 +1,6 @@
-import type { HealthStatus, ServiceItem, DashParkConfig } from '../../shared/types.js';
+import type { HealthStatus, ServiceItem, DashParkConfig, WebhookAlertConfig } from '../../shared/types.js';
 import { APP_VERSION } from '../../shared/version.js';
+import { globalAlertDispatcher } from './alert-dispatcher.js';
 
 // Allow self-signed certificates for local homelab environments (e.g. Proxmox, Portainer, TrueNAS, Emby)
 if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === undefined) {
@@ -21,6 +22,7 @@ export class HealthCheckerService {
   private isChecking: boolean = false;
   private pollIntervalMs: number = 30000;
   private currentServices: ServiceItem[] = [];
+  private currentWebhooks: WebhookAlertConfig[] = [];
 
   constructor(pollIntervalMs: number = 30000) {
     this.pollIntervalMs = pollIntervalMs;
@@ -126,6 +128,22 @@ export class HealthCheckerService {
     };
 
     this.statusMap.set(service.id, healthResult);
+
+    // Dispatch webhook alerts on outage / recovery
+    if (this.currentWebhooks.length > 0) {
+      globalAlertDispatcher
+        .handleServiceStatusChange(
+          service,
+          result.status,
+          result.error,
+          result.latencyMs,
+          this.currentWebhooks
+        )
+        .catch((err) => {
+          console.warn('[DashPark Alerts] Dispatch error:', err);
+        });
+    }
+
     return healthResult;
   }
 
@@ -181,6 +199,7 @@ export class HealthCheckerService {
       });
     }
     this.currentServices = allServices;
+    this.currentWebhooks = config.meta?.alerts?.webhooks || [];
 
     // Trigger immediate background check
     this.checkAllServices(this.currentServices).catch((err) => {
