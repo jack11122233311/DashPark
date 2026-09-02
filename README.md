@@ -2,65 +2,33 @@
 
 <div align="center">
 
-**The ultra-lightweight, resilient, and modern self-hosted dashboard for homelabs and servers.**
+**The Apple/Linear-grade, ultra-lightweight, resilient, and modern self-hosted dashboard for homelabs and server parks.**
 
-[![Version](https://img.shields.io/badge/version-v0.3.0-indigo.svg)](https://github.com/jack11122233311/DashPark/releases)
-[![Docker](https://img.shields.io/badge/docker-multi--arch-blue.svg)](https://github.com/jack11122233311/DashPark/pkgs/container/dashpark)
-[![Architectures](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-orange.svg)](#multi-arch-support)
-[![Memory](https://img.shields.io/badge/memory-%3C18MB_RAM-emerald.svg)](#benchmarks)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Release](https://img.shields.io/badge/version-v0.8.0-6366f1.svg?style=flat-square)](https://github.com/jack11122233311/DashPark/releases)
+[![Docker](https://img.shields.io/badge/docker-multi--arch-3b82f6.svg?style=flat-square&logo=docker&logoColor=white)](https://github.com/jack11122233311/DashPark/pkgs/container/dashpark)
+[![Architecture](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-f97316.svg?style=flat-square)](#-docker-compose-quickstart)
+[![Memory Footprint](https://img.shields.io/badge/memory-%3C25MB_RAM-10b981.svg?style=flat-square)](#-why-dashpark)
+[![Tests](https://img.shields.io/badge/tests-79%2F79_passing-emerald.svg?style=flat-square)](tests/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-[Docker Quickstart](#-docker-quickstart) • [Why DashPark?](#-why-dashpark) • [Configuration](#-configuration) • [Layouts & Features](#-layouts--features) • [Architecture](#-architecture)
+<br/>
+
+[Docker Quickstart](#-docker-compose-quickstart) • [Visual Tour](#-visual-tour--screenshots) • [Why DashPark?](#-why-dashpark) • [Features](#-core-capabilities) • [Configuration](#-configuration) • [Architecture](#-zero-bloat-architecture)
+
+<br/>
+
+<img src="docs/screenshots/dashpark-overview.png" alt="DashPark Categorized Grid Overview" width="100%" style="border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);" />
 
 </div>
 
 ---
 
-## 🌟 Features
+## ⚡ 1-Command Docker Compose Quickstart
 
-- ⚡ **Ultra-Lightweight**: Runs on **<18MB RAM** with sub-60ms cold start times. Optimized for Raspberry Pi 3/4/5 and low-spec SBCs.
-- 🍱 **Bento Drag-and-Drop Studio**: Live visual customization mode (`✏️ Customize`) to drag, reorder, and resize tiles (`1x1`, `2x1 Wide`, `1x2 Tall`, `2x2 Hero`) with auto-persistence.
-- 📑 **Multi-Page Dashboard Engine**: Tabbed page router (`#page=media`, `#page=infra`) supporting infinite dedicated pages for media, infrastructure, smart home, and security.
-- 🐳 **Multi-Arch Docker Ready**: Pre-packaged for `linux/amd64` and `linux/arm64` (aarch64) with non-root security (`USER node`).
-- 📊 **View-Adaptive & Toggle-able Stats**: Dynamic live telemetry adapts to the current view — large live uPlot charts in Bento/Tile view, compact sparklines in Grid view, and dense status pills in List view.
-- ⚡ **1-Click Presets Library**: Built-in instant recipes for Emby, Jellyfin, Plex, Pi-hole, AdGuard, Sonarr, Radarr, Home Assistant, Proxmox, TrueNAS, and Uptime Kuma.
-- 📖 **Interactive Service Connection Guides**: Step-by-step token and JSONPath extraction cheatsheet directly inside the Config Editor (`Ctrl+E`).
-- 🔗 **Isolated Action Shortcuts**: Quick micro-action links (e.g. `[Dashboard]`, `[Live TV]`, `[Query Log]`, `[Console]`) on cards without triggering parent navigation.
-- 🛡️ **Zero-Crash Resilient Config Engine**: Misplaced YAML indentations or syntax mistakes won't crash your server or show a blank screen. DashPark catches syntax errors and displays real-time line/column visual repair diagnostics in the UI.
-- 🎨 **3 Switchable Layout Modes**:
-  - **Categorized Grid (`Ctrl+1`)**: Traditional clean category columns with collapsible accordions.
-  - **Bento Grid (`Ctrl+2`)**: Modern modular card grid with customizable tile dimensions and hero slots.
-  - **Compact List (`Ctrl+3`)**: High-density table view with sortable columns for large homelabs (50+ services).
-- 🎭 **7 Theme Presets**: Dark (Default), Nord, Dracula, Catppuccin, Cyberpunk, Glass, and Light with dynamic CSS variables.
-- 🎯 **Smart 6-Tier Icon Resolver**: Cascades through Local `/icons/` ➔ `walkxcode/dashboard-icons` ➔ Simple Icons ➔ Backend Favicon Proxy ➔ Lucide Category Vectors ➔ Initials Badges with zero layout shift.
-- 💓 **Async Health Monitor**: Non-blocking background worker with self-signed SSL tolerance that measures live latency (`ms`) and endpoint reachability.
-- 🛠️ **In-App Config Editor (`Ctrl+E`)**: Visual form editor with Page Manager, Live "Test Ping", or raw YAML editing with real-time syntax linting and automatic `.bak` backups.
+> [!TIP]
+> **Zero-Configuration Volume Auto-Seeding**: No manual directory or config file creation (`mkdir`) is required! DashPark detects empty volume mounts and automatically auto-seeds a rich homelab dashboard on first boot.
 
----
-
-## 🥊 Why DashPark? (Competitive Comparison)
-
-| Feature | DashPark | Homepage | Homarr | Dashy |
-| :--- | :---: | :---: | :---: | :---: |
-| **Idle Memory (RAM)** | **~15 - 18 MB** | ~35 MB | 150 MB+ | 100 MB+ |
-| **Cold Startup Time** | **< 60 ms** | ~500 ms | 3-5 s | 2-4 s |
-| **YAML Syntax Error Handling** | **Live UI Line/Col Banner** | Fatal Crash / Blank Screen | N/A (DB/GUI) | Generic Error |
-| **In-App Visual Config Editor** | **Yes (Hybrid GUI + YAML)** | No (Text file only) | Yes (GUI only) | Complex UI |
-| **Client Bundle Size (gzip)** | **< 52 KB** | ~45 KB | 300 KB+ | 500 KB+ |
-| **Multi-Arch Support** | **amd64 & arm64 (RPi)** | amd64 & arm64 | amd64 & arm64 | amd64 & arm64 |
-
----
-
-## 🐳 Docker Quickstart
-
-### 1. Using Docker Compose (Recommended)
-
-1. Create your local folders and assign permissions:
-```bash
-mkdir -p ./config ./icons && sudo chown -R 1000:1000 ./config ./icons
-```
-
-2. Create a `docker-compose.yml` file:
+### 1. Create `docker-compose.yml`
 
 ```yaml
 services:
@@ -72,49 +40,105 @@ services:
       - "3000:3000"
     volumes:
       - ./config:/app/config
-      - ./icons:/app/icons
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Optional: enables live Docker container discovery
     environment:
       - NODE_ENV=production
       - PORT=3000
       - TZ=UTC
 ```
 
-3. Start the container:
+### 2. Launch DashPark
 
 ```bash
 docker compose up -d
 ```
 
-Access your dashboard at `http://<your-server-ip>:3000`.
+Open **`http://localhost:3000`** (or your server IP) in your browser.
 
-### 2. Using `docker run`
+---
 
-```bash
-docker run -d \
-  --name dashpark \
-  --restart unless-stopped \
-  -p 3000:3000 \
-  -v $(pwd)/config:/app/config \
-  -v $(pwd)/icons:/app/icons \
-  ghcr.io/jack11122233311/dashpark:latest
-```
+## 📸 Visual Tour & Screenshots
+
+### 🍱 Bento Drag-and-Drop Tile Studio
+Customize your dashboard in real time with interactive HTML5 drag-and-drop tile reordering, span cycling (`1x1` standard, `2x1` wide, `1x2` tall, `2x2` hero), and embedded live latency sparklines.
+
+<div align="center">
+  <img src="docs/screenshots/dashpark-bento.png" alt="DashPark Bento Tile Grid Studio" width="100%" style="border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,0.4);" />
+</div>
+
+---
+
+### ⚡ Spotlight Command Palette (`Ctrl+K` / `⌘K`)
+Press `Ctrl+K`, `⌘K`, or `/` anywhere to launch the Spotlight Command Palette. Universally search and execute actions across all services, shortcuts, dashboard pages, theme palettes, layout modes, and system settings with instant fuzzy filtering and keyboard navigation.
+
+---
+
+### 📊 High-Density Compact List View (`Ctrl+3`)
+Engineered for massive homelabs with 50+ services. Enjoy responsive table reflow, inline telemetry badges, and 60fps smooth scrolling.
+
+<div align="center">
+  <img src="docs/screenshots/dashpark-compact.png" alt="DashPark Compact Table List" width="100%" style="border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,0.4);" />
+</div>
+
+---
+
+### ⚙️ 2-Column Split-Pane Settings Hub (`Ctrl+E`)
+A unified master-detail configuration center across 11 categorized panels: Identity, Wallpaper & Glassmorphism, Zero-API-Key Weather, Master PIN Protection, Webhook Outage Alerts, 1-Click Migration Importers, Custom CSS & Icons, and Snapshot History.
+
+<div align="center">
+  <img src="docs/screenshots/dashpark-settings.png" alt="DashPark 2-Column Settings Hub" width="100%" style="border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,0.4);" />
+</div>
+
+---
+
+## 🥊 Why DashPark?
+
+| Feature | 🚀 DashPark | Homepage | Homarr | Dashy |
+| :--- | :---: | :---: | :---: | :---: |
+| **Idle Memory (RAM)** | **~18 - 25 MB** | ~40 MB | 160 MB+ | 120 MB+ |
+| **Cold Startup Time** | **< 60 ms** | ~500 ms | 3-5 s | 2-4 s |
+| **Empty Volume Auto-Seeding** | **Automatic (Zero-Error)** | Manual file copy | DB setup | Manual build |
+| **Floating Action Dock** | **Apple-Style Glass Dock** | None | Top Navbar | Header Bar |
+| **Spotlight Command Palette** | **`Ctrl+K` / `⌘K` Built-in** | None | Partial | Search input |
+| **Zero-Clip Responsive Engine** | **Guaranteed (All Views)** | Variable | Layout shifts | Clipping on mobile |
+| **In-App Visual & YAML Editor** | **Hybrid Form + YAML** | Text editor only | Form only | Complex editor |
+| **Multi-Dashboard Importer** | **Homepage/Homarr/Dashy** | None | None | None |
+| **Outage Webhook Dispatcher** | **Discord/Telegram/Ntfy** | None | Partial | Webhook only |
+| **Multi-Arch Support** | **`amd64` & `arm64` (RPi)** | `amd64` & `arm64` | `amd64` & `arm64` | `amd64` & `arm64` |
+
+---
+
+## 🌟 Core Capabilities
+
+- 🛸 **Apple-Style Floating Action Dock**: Smooth segmented layout switcher (`Grid`, `Bento`, `List`), theme swatches popover, Quick-Add (`➕`), and Kiosk Wallboard toggle.
+- ⚡ **Universal Spotlight Command Palette (`Ctrl+K` / `⌘K`)**: Rapid search across services, pages, themes, and configuration actions.
+- 🍱 **Bento Drag-and-Drop Studio**: Live visual customization with dynamic tile dimensions (`1x1` to `2x2`) and real-time sparkline telemetry.
+- 🚨 **Real-Time Outage Alerts & Toast Notifications**: Non-intrusive floating toast notifications on health transitions (`offline`, `degraded`, `online` recovery) with top outage ribbon filtering.
+- 📺 **Kiosk Multi-Page Auto-Rotation Wallboard**: Slideshow cycling across dashboard pages with an animated progress bar and smart pause on user interaction.
+- 🔒 **PIN Kiosk Protection (`/api/v1/auth/*`)**: SHA-256 master PIN protection for settings and tile reordering on public displays.
+- 🐳 **Docker Socket Auto-Discovery**: Automatic service discovery via container label taxonomy (`dashpark.enable=true`, `dashpark.name`, `dashpark.icon`, `dashpark.group`) with container restart controls.
+- 🌤️ **Zero-API-Key Weather Telemetry**: Live local weather powered by Open-Meteo with dynamic weather icons and condition descriptions.
+- 📦 **1-Click Migration Importers**: Drag-and-drop instant migration from **Homepage** (`services.yaml`), **Homarr** (`JSON`), **Dashy** (`conf.yml`), and **Heimdall** (`export.json`).
+- 🌐 **Public Shareable Status Page (`/api/v1/status/public`)**: Sanitized uptime availability percentage and system status without exposing private network IPs.
+- ⌨️ **Spatial Keyboard & Vim Navigation**: Navigate service cards using Arrow Keys or Vim keys (`h j k l`), `Enter`/`o` to launch, `s` to copy URL, and `?` for the interactive shortcuts cheatsheet.
+- 🎨 **7 Curated Theme Palettes**: Dark (Default), Nord, Dracula, Catppuccin, Cyberpunk, Glass, and Light with dynamic CSS custom properties.
+- 🖼️ **Live Wallpaper Studio & Glassmorphism 2.0**: Custom background image wallpapers with real-time backdrop blur and card opacity sliders.
+- 🎯 **Smart 6-Tier Icon Resolver**: Local `/icons/` ➔ `dashboard-icons` ➔ Simple Icons ➔ Favicon Proxy ➔ Lucide SVG Vectors ➔ Initials Badges with zero layout shift.
 
 ---
 
 ## ⚙️ Configuration
 
-DashPark checks configuration in the following priority order:
+DashPark checks for configuration files in the following order:
 1. `config/dashpark.yaml`
 2. `config/dashpark.yml`
 3. `config/dashpark.json`
-4. `config/dashpark.sample.yaml` (Built-in demo config)
+4. `config/dashpark.sample.yaml` (Built-in template)
 
 ### Sample `dashpark.yaml`
 
 ```yaml
-version: "0.0.1"
+version: "0.8.0"
 
 meta:
   title: "DashPark"
@@ -124,40 +148,46 @@ meta:
   layout: "grid" # grid, bento, compact
   showClock: true
   clockFormat: "24h"
+  weather:
+    enabled: true
+    city: "San Francisco"
 
-categories:
-  - id: "media"
-    name: "Media & Streaming"
-    icon: "film"
-    columns: 4
-    services:
-      - id: "plex"
-        name: "Plex Media Server"
-        url: "http://plex.local:32400"
-        icon: "plex"
-        description: "Movies & TV Streaming"
-        pingUrl: "http://plex.local:32400/web/index.html"
-        target: "_blank"
-        tags: ["media", "streaming"]
+pages:
+  - id: "overview"
+    name: "Overview & Hub"
+    icon: "home"
+    categories:
+      - id: "media"
+        name: "Media & Streaming"
+        icon: "film"
+        services:
+          - id: "plex"
+            name: "Plex Media Server"
+            url: "http://plex.local:32400"
+            icon: "plex"
+            description: "Movies & TV Streaming"
+            pingUrl: "http://plex.local:32400/web/index.html"
+            target: "_blank"
+            tags: ["media", "movies"]
 
-      - id: "sonarr"
-        name: "Sonarr"
-        url: "http://sonarr.local:8989"
-        icon: "sonarr"
-        description: "TV Series Collection Manager"
-        target: "_blank"
-        tags: ["media", "automation"]
+          - id: "jellyfin"
+            name: "Jellyfin"
+            url: "http://jellyfin.local:8096"
+            icon: "jellyfin"
+            description: "Open-Source Media System"
+            target: "_blank"
+            tags: ["media", "streaming"]
 ```
 
 ---
 
-## 🏛️ Architecture
+## 🏛️ Zero-Bloat Architecture
 
-DashPark is engineered with a strict zero-bloat philosophy:
-- **Backend**: Node.js Native ESM + **Fastify** (<18MB idle RAM, non-blocking asynchronous event loop).
-- **Frontend**: **Vite + Vanilla TypeScript & CSS Design System** (Zero runtime framework overhead).
-- **Security**: Runs as non-root user `node` (UID: 1000) inside container.
-- **Parser**: Resilient AST parser with `YAMLParseError` line and column pointer mapping.
+DashPark is engineered with a strict zero-overhead philosophy:
+- **Backend Engine**: Node.js Native ESM + **Fastify** (<25MB idle RAM, asynchronous non-blocking event loop).
+- **Frontend Architecture**: **Vite + Vanilla TypeScript & CSS Design System** (Zero heavy UI framework overhead).
+- **Security**: Runs unprivileged as non-root user `node` (UID: 1000) inside container.
+- **Config Parser**: Resilient AST parser with line/column diagnostic pointers preventing crashing on syntax typos.
 
 ---
 
